@@ -18,9 +18,8 @@ from collections import namedtuple
 N_DELIVERIES = [4]
 N_STOP_POINTS = [4]
 ZIPF_PARAM = [2]
-E = [2500000]  # J
-S = [4000]  # MB
-iterations = 2
+# E = [2500000]  # J
+# S = [4000]  # MB
 
 
 def generate_random_coordinates(num_nodes):
