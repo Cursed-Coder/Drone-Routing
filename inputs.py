@@ -15,10 +15,10 @@ from shapely.geometry import LineString, Point
 from collections import namedtuple
 
 
-N_DELIVERIES = [4]
-N_STOP_POINTS = [4]
+N_DELIVERIES = [6]
+N_STOP_POINTS = [6]
 ZIPF_PARAM = [2]
-iterations = 2
+iterations = 1
 # E = [2500000]  # J
 # S = [4000]  # MB
 

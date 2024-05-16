@@ -7,8 +7,8 @@ import algorithms as alg
 # import ILP as ilp
 import numpy as np
 
-N_DELIVERIES = [4]
-N_STOP_POINTS = [4]
+N_DELIVERIES = [6]
+N_STOP_POINTS = [6]
 ZIPF_PARAM = [2]
 B = 100  # J
 W = 20  # KG
@@ -56,8 +56,8 @@ def algo_tests():
 
                         output_2 = alg.DRA_2(prob[0][0], prob[0][1], num_drones, B, W, E)
                         print("***************algo2 ends****************")
-                        output_ILP =  alg.DRA_2(prob[0][0], prob[0][1], num_drones, B, W, E)
-                            # ILP.opt_algo_cplex(prob[0], prob[1], num_drones, B, W, E))
+                        output_ILP =  ILP.opt_algo_cplex(prob[0][0], prob[0][1], num_drones, B, W, E)
+                        #     ILP.opt_algo_cplex(prob[0], prob[1], num_drones, B, W, E))
                         results = [{
                             "Instance": prob,
                             "Algorithm_1_Output": output_1,
