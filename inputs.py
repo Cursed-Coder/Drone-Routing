@@ -14,8 +14,8 @@ from scipy.stats import zipf
 from shapely.geometry import LineString, Point
 from collections import namedtuple
 
-N_DELIVERIES = [9]
-N_STOP_POINTS = [9]
+N_DELIVERIES = [10]
+N_STOP_POINTS = [10]
 ZIPF_PARAM = [2]
 iterations = 10
 

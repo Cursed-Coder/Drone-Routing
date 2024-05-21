@@ -92,8 +92,8 @@ def find_best_candidate(route, route_2, route_energy, battery_limit, weight, wei
                 print("distance_a_c", distance_a_c)
                 print("distance_a_b", distance_a_b)
                 print("distance_c_b", distance_c_b)
-                print("route_i ",route[i])
-                print("route_i+1 ",route[i+1])
+                print("route_i ", route[i])
+                print("route_i+1 ", route[i + 1])
 
             new_distance = distance_a_c + distance_c_b - distance_a_b
             cumulative_distance = sum(euclidean_distance(route[j], route[j + 1]) for j in range(i))
@@ -104,8 +104,8 @@ def find_best_candidate(route, route_2, route_energy, battery_limit, weight, wei
                 print("unvisited_node", unvisited_node)
                 print("cumulative distance", cumulative_distance)
                 print("later weight", later_weight)
-                print("weight",weight)
-                print("E",E)
+                print("weight", weight)
+                print("E", E)
             # print("later_weight", later_weight)
             delivery_weight = unvisited_nodes[unvisited_node][1]
             cumulative_distance += distance_a_c
@@ -157,7 +157,7 @@ def get_best_route_3(stop_coordinates, deliveries, deliveries_2, uav, ratio, E, 
     weight_uav = uav.weight
     k = K
 
-    print("uav_stop_point_coords",uav_stop_point_dict)
+    print("uav_stop_point_coords", uav_stop_point_dict)
 
     for i in range(len(stop_keys) - 1):
         start = stop_keys[i]
@@ -175,9 +175,8 @@ def get_best_route_3(stop_coordinates, deliveries, deliveries_2, uav, ratio, E, 
         coord2 = (stop_coordinates[end][1][0], stop_coordinates[end][1][1])
 
         if debug:
-            print("Coord", start," ",coord1)
-            print("Coord", end," ",coord2)
-
+            print("Coord", start, " ", coord1)
+            print("Coord", end, " ", coord2)
 
         route = [coord1, coord2]
         route_2 = [start, end]
@@ -492,3 +491,222 @@ def DRA_2(stop_coordinates, deliveries, num_drones, B, W, E, weight_uav, K, debu
 
     print("Final Total Reward_2:", total_reward)
     return total_reward
+
+
+# import math
+# import numpy as np
+
+
+# class UAV:
+#     def __init__(self, id, battery_limit, weight_capacity, weight):
+#         self.id = id
+#         self.battery_limit = battery_limit
+#         self.weight_capacity = weight_capacity
+#         self.current_battery = battery_limit
+#         self.weight = weight
+#         self.route_ranges = []  # Keeps track of (start, end) ranges for this UAV's routes
+#
+#     def __repr__(self):
+#         return f"UAV(id={self.id}, battery_limit={self.battery_limit}, weight_capacity={self.weight_capacity}, current_battery={self.current_battery})"
+
+
+# def euclidean_distance(p1, p2):
+#     return math.sqrt((p1[0] - p2[0]) ** 2 + (p1[1] - p2[1]) ** 2)
+#
+
+def find_best_stop_pair(truck_stops, stop_keys, deliveries, uavs):
+    results = []
+
+    for delivery in deliveries:
+        d_profit = deliveries[delivery][0]
+        d_weight = deliveries[delivery][1]
+        d_coords = deliveries[delivery][2]
+
+        min_distance = float('inf')
+        best_pair = None
+
+        for i in range(len(stop_keys) - 1):
+            s = stop_keys[i]
+            s_next = stop_keys[i + 1]
+            start_point = truck_stops[s][1]
+            end_point = truck_stops[s_next][1]
+
+            distance_to_delivery = euclidean_distance(start_point, d_coords)
+            distance_back_to_next_stop = euclidean_distance(d_coords, end_point)
+            total_distance = distance_to_delivery + distance_back_to_next_stop
+
+            for uav in uavs:
+                if uav.weight_capacity >= d_weight and uav.battery_limit >= total_distance:
+                    if total_distance < min_distance:
+                        min_distance = total_distance
+                        best_pair = (s, s_next)
+
+        if best_pair:
+            results.append((delivery, best_pair, d_profit / min_distance))
+        else:
+            results.append((delivery, None, 0))  # No valid UAV found for this delivery
+
+    return results
+
+
+def build_flights(truck_stops, deliveries, uavs, E):
+    # Find the best stop pair for each delivery
+    stop_keys = list(truck_stops.keys())
+    best_stop_pairs = find_best_stop_pair(truck_stops, stop_keys, deliveries, uavs)
+
+    # Sort deliveries based on their launch point and ratio of profit to distance
+    sorted_deliveries = sorted(best_stop_pairs,
+                               key=lambda x: (truck_stops[x[1][0]][0] if x[1] else float('inf'), -x[2]))
+    # print("sorted deliveries", sorted_deliveries)
+    uav_stop_point_dict = {u: [] for u in uavs}
+    flights = []
+
+    for uav in uavs:
+        uav_flights = []
+        remaining_battery = uav.battery_limit
+        current_flight = []
+        current_flight_dist = 0
+        current_weight = 0
+        current_energy = 0
+        last_delivery_coords = None
+        last_stop = None
+        last_delivery_to_stop_distance = 0
+
+        for delivery, stop_pair, _ in sorted_deliveries:
+            if stop_pair:
+                start_stop = stop_pair[0]
+                next_stop = stop_pair[1]
+                d_coords = deliveries[delivery][2]
+                d_weight = deliveries[delivery][1]
+
+                if start_stop in uav_stop_point_dict[uav]:
+                    continue
+
+                if last_delivery_coords is None:
+                    start_point = truck_stops[start_stop][1]
+                else:
+                    start_point = last_delivery_coords
+
+                next_point = truck_stops[next_stop][1]
+                distance_to_delivery = euclidean_distance(start_point, d_coords)
+                distance_back_to_next_stop = euclidean_distance(d_coords, next_point)
+
+                if len(current_flight) > 0:
+                    uav_wt_append_dist = (
+                                distance_to_delivery + distance_back_to_next_stop - last_delivery_to_stop_distance)
+                    # energy_last_append = dist_last_append * E
+                    delivery_wt_extra_dist = current_flight_dist - last_delivery_to_stop_distance + distance_to_delivery
+                    energy_needed = current_energy + delivery_wt_extra_dist * d_weight * E + uav_wt_append_dist * uav.weight * E
+                    if (current_weight + d_weight <= uav.weight_capacity and
+                            energy_needed <= remaining_battery):
+                        current_flight.append(delivery)
+                        current_weight += d_weight
+                        current_flight_dist += uav_wt_append_dist
+                        current_energy = energy_needed
+                        last_delivery_coords = d_coords
+                        last_delivery_to_stop_distance = distance_back_to_next_stop
+                    else:
+                        uav_flights.append(current_flight)
+                        uav_stop_point_dict[uav].append(start_stop)
+                        current_flight = []
+                        current_energy += energy_needed
+                        current_weight = 0
+                        current_flight_dist = 0
+                        last_delivery_to_stop_distance = 0
+                        energy_needed = 0
+                        last_delivery_coords = None
+                        start_point = truck_stops[start_stop][1]
+                        distance_to_delivery = euclidean_distance(start_point, d_coords)
+
+                if start_stop in uav_stop_point_dict[uav]:
+                    continue
+
+                if len(current_flight) == 0:
+                    dist_last_append = (distance_to_delivery + distance_back_to_next_stop)
+                    energy_needed = (distance_to_delivery * (d_weight + uav.weight)
+                                     + distance_back_to_next_stop * uav.weight) * E
+                    if (current_weight + d_weight <= uav.weight_capacity and
+                            energy_needed <= remaining_battery):
+                        current_flight.append(delivery)
+                        current_weight += d_weight
+                        current_flight_dist = dist_last_append
+                        current_energy = energy_needed
+                        last_delivery_coords = d_coords
+                        last_delivery_to_stop_distance = distance_back_to_next_stop
+
+        if len(current_flight) > 0:
+            uav_flights.append(current_flight)
+        flights.append((uav, uav_flights))
+
+    return flights
+
+
+def select_best_flight(flights, deliveries):
+    max_reward = -float('inf')
+    best_uav = None
+    best_flight = None
+
+    for uav, uav_flights in flights:
+        # print("uav", uav)
+        # print("fliht",uav_flights)
+        for flight in uav_flights:
+            reward = sum(deliveries[d][0] for d in flight)
+            if reward > max_reward:
+                max_reward = reward
+                best_uav = uav
+                best_flight = flight
+
+    return best_uav, best_flight, max_reward
+
+
+def iterative_build_flights(truck_stops, deliveries, uavs, E):
+    all_flights = []
+    remaining_deliveries = deliveries.copy()
+    remaining_uavs = uavs.copy()
+
+    while remaining_uavs and remaining_deliveries:
+        flights = build_flights(truck_stops, remaining_deliveries, remaining_uavs, E)
+        best_uav, best_flight, max_reward = select_best_flight(flights, remaining_deliveries)
+
+        if best_flight:
+            all_flights.append((best_uav, best_flight))
+            remaining_uavs.remove(best_uav)
+            for delivery in best_flight:
+                del remaining_deliveries[delivery]
+        else:
+            break
+
+    return all_flights
+
+
+# Example usage:
+
+# Truck stop points (in order)
+def DRA_3(stop_coordinates, deliveries, num_drones, B, W, E, weight_uav, K, debug):
+    # truck_stops = {
+    #     's1': (48.475643284870344, np.array([38.55993996, 65.74388305])),
+    #     's2': (116.29400534058423, np.array([37.9622159 , 63.64426632])),
+    #     's3': (203.14362653751732, np.array([70.98484424, 19.35354328])),
+    #     's4': (270.8258997146956, np.array([14.73032554, 30.70628411]))
+    # }
+    #
+    # UAVs with weight carrying capacity and battery limit (maximum distance)
+    uav_s = [UAV(id=i, battery_limit=B, weight_capacity=W, weight=weight_uav) for i in range(num_drones)]
+
+    # Deliveries with weight, profit, and coordinates
+    # deliveries = {
+    #     'p1': {0: 10, 1: 3.427099253612857, 2: (8.969854822794765, 96.92142909395326)},
+    #     'p2': {0: 1, 1: 2.9358298593710237, 2: (94.91501069149506, 59.11756729080847)},
+    #     'p3': {0: 1, 1: 2.7882057370960727, 2: (6.544310293541889, 58.08071895810054)},
+    #     'p4': {0: 1, 1: 2.3161914908695618, 2: (63.20901569381385, 26.23390707996971)}
+    # }
+
+    # Build flights for UAVs
+    all_flights = iterative_build_flights(stop_coordinates, deliveries, uav_s, E)
+    total_reward = 0
+    for uav, flight in all_flights:
+        print(f"UAV {uav.id} with flight: {flight}")
+        for p in flight:
+            total_reward += deliveries[p][0]
+    return  total_reward
+
