@@ -14,11 +14,12 @@ from scipy.stats import zipf
 from shapely.geometry import LineString, Point
 from collections import namedtuple
 
-
-N_DELIVERIES = [6]
-N_STOP_POINTS = [6]
+N_DELIVERIES = [9]
+N_STOP_POINTS = [9]
 ZIPF_PARAM = [2]
-iterations = 1
+iterations = 10
+
+
 # E = [2500000]  # J
 # S = [4000]  # MB
 
@@ -155,7 +156,7 @@ def define_deliveries(edges_in_path_lines, num_deliveries, min_edge_distance, ma
 
             deliveries.append({
                 'id': f"Delivery_{len(deliveries) + 1}",
-                'profit': closest_value,
+                'profit': profit,
                 'weight': weight,
                 'coordinates': [x, y]  # Convert coordinates to list
             })
@@ -200,11 +201,13 @@ def generate_problem_instance():
 
                     # Step 3: Generate a random directed cycle
                     node_names = list(coordinates.keys())
-                    random_order, edges_in_path, total_distance = generate_random_cycle(graph, node_names, target_distance,
+                    random_order, edges_in_path, total_distance = generate_random_cycle(graph, node_names,
+                                                                                        target_distance,
                                                                                         tolerance)
 
                     # Step 4: Define stop points along the path
-                    stop_point_coords = define_stop_points(edges_in_path, coordinates, graph, min_dist_between_stop_points,
+                    stop_point_coords = define_stop_points(edges_in_path, coordinates, graph,
+                                                           min_dist_between_stop_points,
                                                            num_stop_points)
 
                     # Step 5: Define deliveries with constraints

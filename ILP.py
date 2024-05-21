@@ -2,7 +2,6 @@
 from docplex.mp.model import Model
 import numpy as np  # For
 
-
 import math
 import itertools
 
@@ -23,53 +22,12 @@ def euclidean_distance(point1, point2):
     return math.sqrt((point2[0] - point1[0]) ** 2 + (point2[1] - point1[1]) ** 2)
 
 
-def opt_algo_cplex(stop_coordinates, deliveries, num_drones, B_u, W_u, E):
+def opt_algo_cplex(stop_coordinates, deliveries, num_drones, B_u, W_u, E, weight_uav, K, debug):
     model = Model(name="uav_delivery_optimization")
     U = [f"u{idx + 1}" for idx in range(num_drones)]
     S = [f"s{idx + 1}" for idx in range(len(stop_coordinates))]
     P = [f"p{idx + 1}" for idx in range(len(deliveries))]
 
-    # Unmanned Aerial Vehicles (UAVs)
-    # U = ["u1", "u2", "u3"]  # Adding an extra UAV for variety
-
-    # List of stop points
-    # S = ["s1", "s2", "s3", "s4", "s5"]  # Adding one more stop point
-
-    # List of delivery points
-    # P = ["p1", "p2", "p3", "p4", "p5"]  # Adding one more delivery point
-
-    # Rewards for each delivery point
-    # rewards = {
-    #     "p1": 15,
-    #     "p2": 20,
-    #     "p3": 30,
-    #     "p4": 35,
-    #     "p5": 40  # New reward for the additional delivery point
-    # }
-
-    # # Weights for each delivery point
-    # weights = {
-    #     "p1": 5,
-    #     "p2": 7,
-    #     "p3": 9,
-    #     "p4": 12,
-    #     "p5": 14  # Weight for the additional delivery point
-    # }
-    #
-    # # Coordinates for stop points and delivery points
-    # coordinates = {
-    #     "s1": (0, 0),
-    #     "s2": (2, 3),
-    #     "s3": (6, 7),
-    #     "s4": (10, 12),
-    #     "s5": (15, 17),  # Coordinate for the new stop point
-    #
-    #     "p1": (1, 1),
-    #     "p2": (4, 5),
-    #     "p3": (7, 8),
-    #     "p4": (11, 13),
-    #     "p5": (16, 18)  # Coordinate for the new delivery point
-    # }
     rewards = {}
     weights = {}
     coordinates = {}
@@ -106,7 +64,7 @@ def opt_algo_cplex(stop_coordinates, deliveries, num_drones, B_u, W_u, E):
     q = {(a, b, u): model.binary_var(name=f"q_{a}_{b}_{u}") for a in S for b in S for u in U}
 
     # Define other variables
-    t = {s: model.integer_var(lb=1, ub=len(S), name=f"t_{s}") for s in S}
+    # t = {s: model.integer_var(lb=1, ub=len(S), name=f"t_{s}") for s in S}
 
     y = {(p, a, b, u): model.integer_var(lb=1, ub=len_p, name=f"y_{p}_{a}_{b}_{u}") for p in P for a in S for b in S for
          u in U}
@@ -114,15 +72,41 @@ def opt_algo_cplex(stop_coordinates, deliveries, num_drones, B_u, W_u, E):
     v = {(p_1, p_2, a, b, u): model.binary_var(name=f"v_{p_1}_{p_2}_{a}_{b}_{u}") for p_1 in P for p_2 in P for a in S
          for b in S for u in U}
 
+    i = {(a_1, a_2, u): model.continuous_var(lb=0, name=f"i_{u}_{a_1}_{a_2}") for a_1 in A for a_2 in A for u in U}
+    h = {(a, u): model.continuous_var(lb=0, name=f"h_{a}_{u}") for a in A for u in U}
+
     # Objective: Maximize profit from deliveries
     model.maximize(model.sum(z[p, a, b, u] * rewards[p] for u in U for p in P for a in S for b in S))
     model.add_constraints(
         model.sum(z[p, a, b, u] for a in S for b in S for u in U) <= 1 for p in P
     )
+    model.add_constraints(
+        model.sum(z[p, a, b, u] for p in P) <= K for a in S for b in S for u in U
+    )
+
+    # model.add_constraints(
+    #     model.sum(E * alpha[a, b, u] * distance_matrix[(a, b)] for a in A for b in A) <= B_u for u in U
+    # )
+    model.add_constraints(
+        i[a_1, a_2, u] >= h[a_1, u] - (1 - alpha[a_1, a_2, u]) * M for a_1 in A for a_2 in A for u in U)
+    model.add_constraints(i[a_1, a_2, u] <= h[a_1, u] for a_1 in A for a_2 in A for u in U)
+    model.add_constraints(i[a_1, a_2, u] <= alpha[a_1, a_2, u] * M for a_1 in A for a_2 in A for u in U)
+    #
+    #
+    #
+    #
+    model.add_constraints(model.sum(
+        (i[a_1, a_2, u] + weight_uav * alpha[a_1, a_2, u]) * distance_matrix[(a_1, a_2)] * E for a_1 in A for a_2 in
+        A) <= B_u for u in U)
+
+    model.add_constraints(h[a, u] == model.sum(z[p, a, b, u] * weights[p] for b in S for p in P) for a in S for u in U)
 
     model.add_constraints(
-        model.sum(E * alpha[a, b, u] * distance_matrix[(a, b)] for a in A for b in A) <= B_u for u in U
-    )
+        h[a_1, u] <= i[a_2, a_1, u] - alpha[a_2, a_1, u] * weights[a_1] + (1 - alpha[a_2, a_1, u]) * M for a_1 in P for
+        a_2 in A for u in U)
+    # #
+    model.add_constraints(
+        h[a_1, u] >= i[a_2, a_1, u] - alpha[a_2, a_1, u] * weights[a_1] for a_1 in P for a_2 in A for u in U)
 
     model.add_constraints(
         model.sum(z[p, a, b, u] * weights[p] for p in P) <= W_u for u in U for a in S for b in S
@@ -229,7 +213,7 @@ def opt_algo_cplex(stop_coordinates, deliveries, num_drones, B_u, W_u, E):
         else:
             model.add_constraint(tau["depot", S[i]] == 0)
 
-    for i in range(len(S) - 1):
+    for i in range(len(S)):
         for j in range(len(S)):
             if j == i + 1:
                 model.add_constraint(tau[S[i], S[j]] == 1)
@@ -241,8 +225,9 @@ def opt_algo_cplex(stop_coordinates, deliveries, num_drones, B_u, W_u, E):
 
     # Optional additional constraints to ensure specific sequences
 
-    model.set_log_output(True)  # Enable solver logging
-
+    # if debug:
+        # model.set_log_output(True)  # Enable solver logging
+    # model.parameters.timelimit = 200
     try:
         solution = model.solve()
 
@@ -258,6 +243,13 @@ def opt_algo_cplex(stop_coordinates, deliveries, num_drones, B_u, W_u, E):
             for key in alpha:
                 if solution[alpha[key]] > 0:
                     print(f"UAV {key[2]} flies from {key[0]} to {key[1]}.")
+            for key in tau:
+                if solution[tau[key]] > 0:
+                    print(f"truck travels between {key[0]} and {key[1]}.")
+            for key in h:
+                if solution[h[key]] > 0:
+                    print(f"UAV flies from {key[0]} carrying {solution[h[key]]} Kgs.")
+
             return solution.objective_value
         else:
             # No solution found, examine the solver status

@@ -1,13 +1,13 @@
 import math
 
 
-def select_uav_with_most_battery(uavs):
+def select_uav_with_most_battery(uav_s):
     # Sort UAVs by current battery in descending order and return the one with the most battery left
-    if not uavs:
+    if not uav_s:
         return None
 
-    sorted_uavs = sorted(uavs, key=lambda uav: uav.current_battery, reverse=True)
-    return sorted_uavs[0]
+    sorted_uav_s = sorted(uav_s, key=lambda uav: uav.current_battery, reverse=True)
+    return sorted_uav_s[0]
 
 
 # # Helper function to compute Euclidean distance

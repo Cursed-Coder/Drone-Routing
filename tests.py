@@ -7,13 +7,15 @@ import algorithms as alg
 # import ILP as ilp
 import numpy as np
 
-N_DELIVERIES = [6]
-N_STOP_POINTS = [6]
+N_DELIVERIES = [9]
+N_STOP_POINTS = [9]
 ZIPF_PARAM = [2]
-B = 100  # J
-W = 20  # KG
+B = 500  # J
+W = 10  # KG
 N_DRONES = [1]
 E = 1
+debug = 0
+K = 3
 
 
 def algo_tests():
@@ -39,7 +41,7 @@ def algo_tests():
                                 break  # Break the loop when end of file is reached
 
                         # print(instances)
-#
+                    #
                     # print(instances)
                     # for en in E:
                     #     for w in W:
@@ -49,15 +51,24 @@ def algo_tests():
                         # print("len of instances is ",len(prob))
 
                         print("***************8lgo1 starts****************")
-                        output_1 = alg.DRA_1(prob[0][0], prob[0][1], num_drones, B, W, E)
+                        output_1 = alg.DRA_1(prob[0][0], prob[0][1], num_drones, B, W, E, 1, K, debug)
                         print("***************algo1 ends****************")
                         print("***************algo2 starts****************")
                         # #
 
-                        output_2 = alg.DRA_2(prob[0][0], prob[0][1], num_drones, B, W, E)
+                        output_2 = alg.DRA_2(prob[0][0], prob[0][1], num_drones, B, W, E,1, K, debug)
                         print("***************algo2 ends****************")
-                        output_ILP =  ILP.opt_algo_cplex(prob[0][0], prob[0][1], num_drones, B, W, E)
-                        #     ILP.opt_algo_cplex(prob[0], prob[1], num_drones, B, W, E))
+                        output_ILP = ILP.opt_algo_cplex(prob[0][0], prob[0][1], num_drones, B, W, E,1, K, debug)
+
+                        print(
+                            "&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&7")
+                        print("output1", output_1)
+                        print("output2", output_2)
+                        print("outputILP", output_ILP)
+                        print(
+                            "&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&7")
+
+                        # output_ILP = ILP.opt_algo_cplex(prob[0], prob[1], num_drones, B, W, E, K, debug)
                         results = [{
                             "Instance": prob,
                             "Algorithm_1_Output": output_1,
