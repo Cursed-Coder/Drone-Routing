@@ -14,10 +14,11 @@ from scipy.stats import zipf
 from shapely.geometry import LineString, Point
 from collections import namedtuple
 
-N_DELIVERIES = [10]
-N_STOP_POINTS = [10]
+N_DELIVERIES = [5, 15, 20]
+N_STOP_POINTS = [7]
 ZIPF_PARAM = [2]
-iterations = 10
+iterations = 1
+max_coord = 15
 
 
 # E = [2500000]  # J
@@ -28,7 +29,7 @@ def generate_random_coordinates(num_nodes):
     """
     Generate random coordinates for a given number of nodes.
     """
-    return {f"Node_{i}": (np.random.uniform(0, 100), np.random.uniform(0, 100)) for i in range(num_nodes)}
+    return {f"Node_{i}": (np.random.uniform(0, max_coord), np.random.uniform(0, max_coord)) for i in range(num_nodes)}
 
 
 def create_complete_graph_with_weights(coordinates):
@@ -125,8 +126,52 @@ def is_point_far_enough(point, existing_deliveries, min_distance):
     return all(Point(delivery['coordinates']).distance(point) >= min_distance for delivery in existing_deliveries)
 
 
+# def define_deliveries(edges_in_path_lines, num_deliveries, min_edge_distance, max_edge_distance, min_delivery_distance,
+#                       profit_distribution, weights_range, profit_range):
+#     """
+#     Generate random deliveries with certain constraints, including profit distribution and distance to path.
+#     """
+#     deliveries = []
+#     num_attempts = 0
+#
+#     while len(deliveries) < num_deliveries and num_attempts < 100000:
+#         # Random x, y coordinates
+#         x = np.random.uniform(0, 100)
+#         y = np.random.uniform(0, 100)
+#
+#         # Create a Point for the delivery
+#         point = Point(x, y)
+#
+#         # Calculate distance to each edge
+#         distances = [line.distance(point) for line in edges_in_path_lines]
+#
+#         # Check if the point is within acceptable distance from at least one edge
+#         if all(min_edge_distance <= distance <= max_edge_distance for distance in distances) and is_point_far_enough(
+#                 point, deliveries, min_delivery_distance):
+#             # Random profit from Zipf distribution
+#             profit = profit_distribution.rvs()
+#             closest_value = min([5, 10, 20], key=lambda x: abs(x - profit))
+#
+#             # Random weight within the specified range
+#             weight = np.random.uniform(weights_range[0], weights_range[1])
+#
+#             deliveries.append({
+#                 'id': f"Delivery_{len(deliveries) + 1}",
+#                 'profit': profit,
+#                 'weight': weight,
+#                 'coordinates': [x, y]  # Convert coordinates to list
+#             })
+#
+#         num_attempts += 1  # Prevent endless loop
+#
+#     # Ensure all deliveries meet the constraints
+#     return [delivery for delivery in deliveries if any(
+#         min_edge_distance <= line.distance(Point(delivery['coordinates'])) <= max_edge_distance for line in
+#         edges_in_path_lines)]
+
+
 def define_deliveries(edges_in_path_lines, num_deliveries, min_edge_distance, max_edge_distance, min_delivery_distance,
-                      profit_distribution, weights_range):
+                      profit_distribution, weights_range, profit_range):
     """
     Generate random deliveries with certain constraints, including profit distribution and distance to path.
     """
@@ -135,8 +180,8 @@ def define_deliveries(edges_in_path_lines, num_deliveries, min_edge_distance, ma
 
     while len(deliveries) < num_deliveries and num_attempts < 100000:
         # Random x, y coordinates
-        x = np.random.uniform(0, 100)
-        y = np.random.uniform(0, 100)
+        x = np.random.uniform(0, max_coord)
+        y = np.random.uniform(0, max_coord)
 
         # Create a Point for the delivery
         point = Point(x, y)
@@ -149,17 +194,18 @@ def define_deliveries(edges_in_path_lines, num_deliveries, min_edge_distance, ma
                 point, deliveries, min_delivery_distance):
             # Random profit from Zipf distribution
             profit = profit_distribution.rvs()
-            closest_value = min([5, 10, 20], key=lambda x: abs(x - profit))
 
-            # Random weight within the specified range
-            weight = np.random.uniform(weights_range[0], weights_range[1])
+            # Ensure profit is within the specified range
+            if profit_range[0] <= profit <= profit_range[1]:
+                # Random weight within the specified range
+                weight = np.random.uniform(weights_range[0], weights_range[1])
 
-            deliveries.append({
-                'id': f"Delivery_{len(deliveries) + 1}",
-                'profit': profit,
-                'weight': weight,
-                'coordinates': [x, y]  # Convert coordinates to list
-            })
+                deliveries.append({
+                    'id': f"Delivery_{len(deliveries) + 1}",
+                    'profit': profit,
+                    'weight': weight,
+                    'coordinates': [x, y]  # Convert coordinates to list
+                })
 
         num_attempts += 1  # Prevent endless loop
 
@@ -167,6 +213,7 @@ def define_deliveries(edges_in_path_lines, num_deliveries, min_edge_distance, ma
     return [delivery for delivery in deliveries if any(
         min_edge_distance <= line.distance(Point(delivery['coordinates'])) <= max_edge_distance for line in
         edges_in_path_lines)]
+
 
 
 def save_data_to_file(data, filename):
@@ -186,11 +233,12 @@ def generate_problem_instance():
                 for i in range(iterations):
                     instances = []
                     num_nodes = 5
-                    target_distance = 400.0
+                    target_distance = 200.0
                     tolerance = 50
-                    min_dist_between_stop_points = 30
+                    min_dist_between_stop_points = 3
                     profit_distribution = zipf(theta)
-                    weights_range = (2, 4)
+                    weights_range = (0.5, 2.5)
+                    profit_range = (5,10)
 
                     # Step 1: Generate coordinates for nodes
                     coordinates = generate_random_coordinates(num_nodes)
@@ -217,11 +265,12 @@ def generate_problem_instance():
                     deliveries = define_deliveries(
                         edges_in_path_lines,
                         n_deliveries,
-                        min_edge_distance=5,
-                        max_edge_distance=100,
-                        min_delivery_distance=5,
+                        min_edge_distance=1,
+                        max_edge_distance=14,
+                        min_delivery_distance=2,
                         profit_distribution=profit_distribution,
                         weights_range=weights_range,
+                        profit_range = profit_range
                     )
 
                     # # Step 6: Output the minimum closest distance between deliveries and edges

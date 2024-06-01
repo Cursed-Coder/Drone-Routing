@@ -22,15 +22,19 @@ def euclidean_distance(point1, point2):
     return math.sqrt((point2[0] - point1[0]) ** 2 + (point2[1] - point1[1]) ** 2)
 
 
-def opt_algo_cplex(stop_coordinates, deliveries, num_drones, B_u, W_u, E, weight_uav, K, debug):
+def opt_algo_cplex(stop_coordinates, deliveries, uav_s, E, I, K, debug):
     model = Model(name="uav_delivery_optimization")
-    U = [f"u{idx + 1}" for idx in range(num_drones)]
+    U = [f"u{uav.id + 1}" for uav in uav_s]
     S = [f"s{idx + 1}" for idx in range(len(stop_coordinates))]
     P = [f"p{idx + 1}" for idx in range(len(deliveries))]
 
     rewards = {}
     weights = {}
     coordinates = {}
+
+    uav_map = {}
+    for i in range(len(uav_s)):
+        uav_map[U[i]] = uav_s[i]
 
     # Iterate over delivery_data dictionary
     for key, value in deliveries.items():
@@ -87,17 +91,24 @@ def opt_algo_cplex(stop_coordinates, deliveries, num_drones, B_u, W_u, E, weight
     # model.add_constraints(
     #     model.sum(E * alpha[a, b, u] * distance_matrix[(a, b)] for a in A for b in A) <= B_u for u in U
     # )
+
+
+
     model.add_constraints(
         i[a_1, a_2, u] >= h[a_1, u] - (1 - alpha[a_1, a_2, u]) * M for a_1 in A for a_2 in A for u in U)
     model.add_constraints(i[a_1, a_2, u] <= h[a_1, u] for a_1 in A for a_2 in A for u in U)
     model.add_constraints(i[a_1, a_2, u] <= alpha[a_1, a_2, u] * M for a_1 in A for a_2 in A for u in U)
+
+
+
+
     #
     #
     #
     #
     model.add_constraints(model.sum(
-        (i[a_1, a_2, u] + weight_uav * alpha[a_1, a_2, u]) * distance_matrix[(a_1, a_2)] * E for a_1 in A for a_2 in
-        A) <= B_u for u in U)
+        (i[a_1, a_2, u] + uav_map[u].weight * alpha[a_1, a_2, u]) * distance_matrix[(a_1, a_2)] * E for a_1 in A for a_2 in
+        A) <= uav_map[u].battery_limit for u in U)
 
     model.add_constraints(h[a, u] == model.sum(z[p, a, b, u] * weights[p] for b in S for p in P) for a in S for u in U)
 
@@ -109,7 +120,7 @@ def opt_algo_cplex(stop_coordinates, deliveries, num_drones, B_u, W_u, E, weight
         h[a_1, u] >= i[a_2, a_1, u] - alpha[a_2, a_1, u] * weights[a_1] for a_1 in P for a_2 in A for u in U)
 
     model.add_constraints(
-        model.sum(z[p, a, b, u] * weights[p] for p in P) <= W_u for u in U for a in S for b in S
+        model.sum(z[p, a, b, u] * weights[p] for p in P) <= uav_map[u].weight_capacity for u in U for a in S for b in S
     )
 
     # Additionally, you may want to ensure the balance between incoming and outgoing flights for a given delivery point
@@ -227,11 +238,17 @@ def opt_algo_cplex(stop_coordinates, deliveries, num_drones, B_u, W_u, E, weight
 
     # if debug:
         # model.set_log_output(True)  # Enable solver logging
-    # model.parameters.timelimit = 200
+    model.set_time_limit(10)
     try:
         solution = model.solve()
+        solve_details = model.solve_details
+        if solve_details.status_code == 107:
+            return None
+
+        print("code: ",solve_details.status_code)
 
         if solution:
+            # print("sdmlsmlslmdllslmdlmssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssss")
             print("Optimal solution found!")
             print("Objective value:", solution.objective_value)
 
@@ -261,6 +278,7 @@ def opt_algo_cplex(stop_coordinates, deliveries, num_drones, B_u, W_u, E, weight
                 print("Solver terminated early due to a time limit or other constraints.")
             else:
                 print("No solution found. Status:", status)
+            return None
 
     except Exception as e:
         print("An error occurred while solving the model:", str(e))

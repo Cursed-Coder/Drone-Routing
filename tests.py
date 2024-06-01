@@ -1,120 +1,48 @@
-# IMPORTS
+
+import copy
 import pandas as pd
 import pickle
-
 import ILP
 import algorithms as alg
-# import ILP as ilp
 import numpy as np
 import matplotlib.pyplot as plt
 import os
+import random
 
-N_DELIVERIES = [10]
-N_STOP_POINTS = [10]
+N_DELIVERIES = [5, 15, 20]
+N_STOP_POINTS = [7]
 ZIPF_PARAM = [2]
-B = 500  # J
-W = 10  # KG
 N_DRONES = [1]
-E = 1
+E = 44.54
+I = 27.01
+
 debug = 0
 K = 3
+uav_weight_capacity_range = [3, 5]
+uav_battery_capacity_range = [3000, 5000]
 
 
-# Define the list of number of deliveries you are varying
-# N_DELIVERIES = [10]
-# N_STOP_POINTS = [10]
-# ZIPF_PARAM = [2]
+class UAV:
+    def __init__(self, id, battery_limit, weight_capacity, weight):
+        self.id = id
+        self.battery_limit = battery_limit
+        self.weight_capacity = weight_capacity
+        self.current_battery = battery_limit
+        self.weight = weight
+        self.route_ranges = []  # Keeps track of (start, end) ranges for this UAV's routes
 
-def load_results(n_deliveries, num_stop_points, theta):
-    results = []
-    load_name = f"results/result_n{n_deliveries}_t{theta}_s{num_stop_points}.csv"
-    if os.path.exists(load_name):
-        df = pd.read_csv(load_name)
-        results.append(df)
-    return pd.concat(results, ignore_index=True) if results else pd.DataFrame()
-
-
-def calculate_average_profits(results):
-    avg_profits = {
-        "n_deliveries": [],
-        "DRA_1_avg_profit": [],
-        "DRA_2_avg_profit": [],
-        "ILP_avg_profit": [],
-        "DRA_1_normalized_profit": [],
-        "DRA_2_normalized_profit": []
-    }
-
-    for n_deliveries in N_DELIVERIES:
-        filtered_results = results[results['Instance'].apply(lambda x: len(eval(x)[0][1]) == n_deliveries)]
-
-        if not filtered_results.empty:
-            avg_profit_dra_1 = filtered_results['Algorithm_1_Output'].mean()
-            avg_profit_dra_2 = filtered_results['Algorithm_2_Output'].mean()
-            avg_profit_ilp = filtered_results['ILP_Output'].mean()
-
-            normalized_profit_dra_1 = avg_profit_dra_1 / avg_profit_ilp if avg_profit_ilp else 0
-            normalized_profit_dra_2 = avg_profit_dra_2 / avg_profit_ilp if avg_profit_ilp else 0
-
-            avg_profits["n_deliveries"].append(n_deliveries)
-            avg_profits["DRA_1_avg_profit"].append(avg_profit_dra_1)
-            avg_profits["DRA_2_avg_profit"].append(avg_profit_dra_2)
-            avg_profits["ILP_avg_profit"].append(avg_profit_ilp)
-            avg_profits["DRA_1_normalized_profit"].append(normalized_profit_dra_1)
-            avg_profits["DRA_2_normalized_profit"].append(normalized_profit_dra_2)
-
-    return pd.DataFrame(avg_profits)
+    def __repr__(self):
+        return f"UAV(id={self.id}, battery_limit={self.battery_limit}, weight_capacity={self.weight_capacity}, current_battery={self.current_battery})"
 
 
-def plot_average_profits(avg_profits):
-    plt.figure(figsize=(10, 6))
-    plt.plot(avg_profits['n_deliveries'], avg_profits['DRA_1_avg_profit'], label='DRA_1 Avg Profit', marker='o')
-    plt.plot(avg_profits['n_deliveries'], avg_profits['DRA_2_avg_profit'], label='DRA_2 Avg Profit', marker='o')
-    plt.plot(avg_profits['n_deliveries'], avg_profits['ILP_avg_profit'], label='ILP Avg Profit', marker='o')
-
-    plt.xlabel('Number of Deliveries')
-    plt.ylabel('Average Profit')
-    plt.title('Average Profits of DRA_1, DRA_2, and ILP varying Number of Deliveries')
-    plt.legend()
-    plt.grid(True)
-    plt.show()
-
-
-def plot_normalized_profits(avg_profits):
-    plt.figure(figsize=(10, 6))
-    plt.plot(avg_profits['n_deliveries'], avg_profits['DRA_1_normalized_profit'], label='DRA_1 Normalized Profit',
-             marker='o')
-    plt.plot(avg_profits['n_deliveries'], avg_profits['DRA_2_normalized_profit'], label='DRA_2 Normalized Profit',
-             marker='o')
-
-    plt.xlabel('Number of Deliveries')
-    plt.ylabel('Normalized Profit (relative to ILP)')
-    plt.title('Normalized Profits of DRA_1 and DRA_2 relative to ILP')
-    plt.legend()
-    plt.grid(True)
-    plt.show()
-
-
-def main():
-    all_results = []
-    for n_deliveries in N_DELIVERIES:
-        for num_stop_points in N_STOP_POINTS:
-            for theta in ZIPF_PARAM:
-                results = load_results(n_deliveries, num_stop_points, theta)
-                if not results.empty:
-                    all_results.append(results)
-
-    if all_results:
-        all_results_df = pd.concat(all_results, ignore_index=True)
-        avg_profits = calculate_average_profits(all_results_df)
-
-        plot_average_profits(avg_profits)
-        plot_normalized_profits(avg_profits)
-    else:
-        print("No results found.")
-
-
-if __name__ == "__main__":
-    main()
+def generate_uavs(num_drones, weight_capacity_range, battery_capacity_range):
+    uavs = []
+    for i in range(num_drones):
+        weight_capacity = random.uniform(weight_capacity_range[0], weight_capacity_range[1])
+        battery_limit = random.uniform(battery_capacity_range[0], battery_capacity_range[1])
+        uav = UAV(i, battery_limit, weight_capacity, 2)
+        uavs.append(uav)
+    return uavs
 
 
 def algo_tests():
@@ -125,41 +53,48 @@ def algo_tests():
                 for theta in ZIPF_PARAM:
                     load_name = "problems/problem_n" + str(n_deliveries) + "_t" + str(theta) + "_s" + str(
                         num_stop_points) + ".dat"
-                    # file = open(name, 'rb')
-                    # instances = pickle.load(file)
                     instances = []
                     with open(load_name, 'rb') as f:
-                        # loaded_data = []
-
-                        # Continue loading data until the end of file
                         while True:
                             try:
                                 loaded_item = pickle.load(f)
                                 instances.append(loaded_item)
                             except EOFError:
-                                break  # Break the loop when end of file is reached
+                                break
+                    uavs = generate_uavs(num_drones, uav_weight_capacity_range, uav_battery_capacity_range)
 
-                        # print(instances)
-                    #
-                    # print(instances)
-                    # for en in E:
-                    #     for w in W:
-                    # print(len(instances))
                     for prob in instances:
-                        print(prob[0][1])
-                        # print("len of instances is ",len(prob))
+                        uav_s = copy.deepcopy(uavs)
 
-                        print("***************8lgo1 starts****************")
-                        output_1 = alg.DRA_1(prob[0][0], prob[0][1], num_drones, B, W, E, 1, K, debug)
+                        print("Generated UAVs:", uavs)
+
+                        print("***************algo1 starts****************")
+                        output_1 = alg.DRA_1(prob[0][0], prob[0][1], uav_s, E, I, K, debug)
                         print("***************algo1 ends****************")
-                        print("***************algo2 starts****************")
-                        # #
+                        uav_s = copy.deepcopy(uavs)
 
-                        output_2 = alg.DRA_2(prob[0][0], prob[0][1], num_drones, B, W, E, 1, K, debug)
-                        output_3 = alg.DRA_3(prob[0][0], prob[0][1], num_drones, B, W, E, 1, K, debug)
-
+                        output_2 = alg.DRA_2(prob[0][0], prob[0][1], uav_s, E, I, K, debug)
+                        uav_s = copy.deepcopy(uavs)
                         print("***************algo2 ends****************")
-                        output_ILP = ILP.opt_algo_cplex(prob[0][0], prob[0][1], num_drones, B, W, E, 1, K, debug)
+
+                        print("***************algo3 starts****************")
+                        output_3 = alg.DRA_3(prob[0][0], prob[0][1], uav_s, E, I, K, debug)
+                        print("***************algo3 ends****************")
+                        uav_s = copy.deepcopy(uavs)
+
+                        print("***************optimal starts****************")
+                        output_ILP = ILP.opt_algo_cplex(prob[0][0], prob[0][1], uav_s, E, I, K, debug)
+                        print("***************optimal ends****************")
+
+                        results = [{
+                            "Instance": prob,
+                            "N_Deliveries": n_deliveries,
+                            "Algorithm_1_Reward": output_1,
+                            "Algorithm_2_Reward": output_2,
+                            "Algorithm_3_Reward": output_3,
+                            "ILP_Reward": output_ILP
+                        }]
+
 
                         print(
                             "&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&7")
@@ -170,15 +105,184 @@ def algo_tests():
                         print(
                             "&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&7")
 
-                        # output_ILP = ILP.opt_algo_cplex(prob[0], prob[1], num_drones, B, W, E, K, debug)
-                        results = [{
-                            "Instance": prob,
-                            "Algorithm_1_Output": output_1,
-                            "Algorithm_2_Output": output_2,
-                            "ILP_Output": output_ILP
-                        }]
-                        save_name = "results/result_n" + str(n_deliveries) + "_t" + str(theta) + "_s" + str(
+                        # results = [{
+                        #     "Instance": prob,
+                        #     "N_Deliveries": n_deliveries,
+                        #     "Algorithm_1_Reward": output_1,
+                        #     "Algorithm_2_Reward": output_2,
+                        #     "Algorithm_3_Reward": output_3,
+                        #     "ILP_Reward": output_ILP
+                        # }]
+                        save_name = "results/result_n" + str(n_deliveries) + "_d" + str(num_drones) + "_s" + str(
                             num_stop_points) + ".csv"
                         df_results = pd.DataFrame(results)
                         df_results.to_csv(save_name, index=False)
                         print(f"Results saved to {save_name}")
+
+
+# def load_results(N_DELIVERIES, num_stop_points, num_drones):
+#     rewards = {
+#         "N_Deliveries": [],
+#         "Algorithm_1_Reward": [],
+#         "Algorithm_2_Reward": [],
+#         "Algorithm_3_Reward": [],
+#         "ILP_Reward": []
+#     }
+#     for n_deliveries in N_DELIVERIES:
+#         file_name = f"results/result_n{n_deliveries}_d{num_drones}_s{num_stop_points}.csv"
+#         if os.path.exists(file_name):
+#             df = pd.read_csv(file_name)
+#             rewards["N_Deliveries"].append(n_deliveries)
+#             rewards["Algorithm_1_Reward"].append(df["Algorithm_1_Reward"].mean())
+#             rewards["Algorithm_2_Reward"].append(df["Algorithm_2_Reward"].mean())
+#             rewards["Algorithm_3_Reward"].append(df["Algorithm_3_Reward"].mean())
+#             rewards["ILP_Reward"].append(df["ILP_Reward"].mean())
+#     return rewards
+
+def load_results(N_DELIVERIES, num_stop_points, num_drones):
+    rewards = {
+        "N_Deliveries": [],
+        "Algorithm_1_Reward": [],
+        "Algorithm_2_Reward": [],
+        "Algorithm_3_Reward": [],
+        "ILP_Reward": []
+    }
+    for n_deliveries in N_DELIVERIES:
+        file_name = f"results/result_n{n_deliveries}_d{num_drones}_s{num_stop_points}.csv"
+        if os.path.exists(file_name):
+            df = pd.read_csv(file_name)
+            rewards["N_Deliveries"].append(n_deliveries)
+            rewards["Algorithm_1_Reward"].append(df["Algorithm_1_Reward"].mean())
+            rewards["Algorithm_2_Reward"].append(df["Algorithm_2_Reward"].mean())
+            rewards["Algorithm_3_Reward"].append(df["Algorithm_3_Reward"].mean())
+            ilp_rewards = df["ILP_Reward"].dropna()  # Remove None (NaN) values
+            if not ilp_rewards.empty:
+                rewards["ILP_Reward"].append(ilp_rewards.mean())
+            else:
+                rewards["ILP_Reward"].append(None)
+    return rewards
+
+
+# def plot_all_rewards(rewards):
+#     plt.figure(figsize=(6, 6))
+#
+#     # Scatter and line plots for Algorithm 1
+#     plt.scatter(rewards["N_Deliveries"], rewards["Algorithm_1_Reward"], label="Algorithm 1", alpha=0.6)
+#     plt.plot(sorted(rewards["N_Deliveries"]),
+#              [rewards["Algorithm_1_Reward"][i] for i in np.argsort(rewards["N_Deliveries"])], linestyle='-', alpha=0.6)
+#
+#     # Scatter and line plots for Algorithm 2
+#     plt.scatter(rewards["N_Deliveries"], rewards["Algorithm_2_Reward"], label="Algorithm 2", alpha=0.6)
+#     plt.plot(sorted(rewards["N_Deliveries"]),
+#              [rewards["Algorithm_2_Reward"][i] for i in np.argsort(rewards["N_Deliveries"])], linestyle='-', alpha=0.6)
+#
+#     # Scatter and line plots for Algorithm 3
+#     plt.scatter(rewards["N_Deliveries"], rewards["Algorithm_3_Reward"], label="Algorithm 3", alpha=0.6)
+#     plt.plot(sorted(rewards["N_Deliveries"]),
+#              [rewards["Algorithm_3_Reward"][i] for i in np.argsort(rewards["N_Deliveries"])], linestyle='-', alpha=0.6)
+#
+#     # Scatter and line plots for ILP
+#     plt.scatter(rewards["N_Deliveries"], rewards["ILP_Reward"], label="ILP", alpha=0.6)
+#     plt.plot(sorted(rewards["N_Deliveries"]), [rewards["ILP_Reward"][i] for i in np.argsort(rewards["N_Deliveries"])],
+#              linestyle='-', alpha=0.6)
+#
+#     plt.xlabel("Number of Deliveries")
+#     plt.ylabel("Reward")
+#     plt.title("Rewards vs Number of Deliveries")
+#     plt.legend()
+#     plt.grid(True)
+#     plt.show()
+def plot_all_rewards(rewards):
+    plt.figure(figsize=(6, 6))
+
+    # Scatter and line plots for Algorithm 1
+    plt.scatter(rewards["N_Deliveries"], rewards["Algorithm_1_Reward"], label="Algorithm 1", alpha=0.6)
+    plt.plot(sorted(rewards["N_Deliveries"]),
+             [rewards["Algorithm_1_Reward"][i] for i in np.argsort(rewards["N_Deliveries"])], linestyle='-', alpha=0.6)
+
+    # Scatter and line plots for Algorithm 2
+    plt.scatter(rewards["N_Deliveries"], rewards["Algorithm_2_Reward"], label="Algorithm 2", alpha=0.6)
+    plt.plot(sorted(rewards["N_Deliveries"]),
+             [rewards["Algorithm_2_Reward"][i] for i in np.argsort(rewards["N_Deliveries"])], linestyle='-', alpha=0.6)
+
+    # Scatter and line plots for Algorithm 3
+    plt.scatter(rewards["N_Deliveries"], rewards["Algorithm_3_Reward"], label="Algorithm 3", alpha=0.6)
+    plt.plot(sorted(rewards["N_Deliveries"]),
+             [rewards["Algorithm_3_Reward"][i] for i in np.argsort(rewards["N_Deliveries"])], linestyle='-', alpha=0.6)
+
+    # Scatter and line plots for ILP
+    non_none_indices = [i for i, reward in enumerate(rewards["ILP_Reward"]) if reward is not None]
+    plt.scatter([rewards["N_Deliveries"][i] for i in non_none_indices], [rewards["ILP_Reward"][i] for i in non_none_indices], label="ILP", alpha=0.6)
+    plt.plot(sorted([rewards["N_Deliveries"][i] for i in non_none_indices]),
+             [rewards["ILP_Reward"][i] for i in sorted(non_none_indices)], linestyle='-', alpha=0.6)
+
+    plt.xlabel("Number of Deliveries")
+    plt.ylabel("Reward")
+    plt.title("Rewards vs Number of Deliveries")
+    plt.legend()
+    plt.grid(True)
+    plt.show()
+
+
+# Plot all rewards against number of drones
+def plot_all_rewards_drones(rewards):
+    plt.figure(figsize=(10, 6))
+
+    # Scatter and line plots for Algorithm 1
+    plt.scatter(rewards["N_Drones"], rewards["Algorithm_1_Reward"], label="Algorithm 1", alpha=0.6)
+    plt.plot(sorted(rewards["N_Drones"]), [rewards["Algorithm_1_Reward"][i] for i in np.argsort(rewards["N_Drones"])],
+             linestyle='-', alpha=0.6)
+
+    # Scatter and line plots for Algorithm 2
+    plt.scatter(rewards["N_Drones"], rewards["Algorithm_2_Reward"], label="Algorithm 2", alpha=0.6)
+    plt.plot(sorted(rewards["N_Drones"]), [rewards["Algorithm_2_Reward"][i] for i in np.argsort(rewards["N_Drones"])],
+             linestyle='-', alpha=0.6)
+
+    # Scatter and line plots for Algorithm 3
+    plt.scatter(rewards["N_Drones"], rewards["Algorithm_3_Reward"], label="Algorithm 3", alpha=0.6)
+    plt.plot(sorted(rewards["N_Drones"]), [rewards["Algorithm_3_Reward"][i] for i in np.argsort(rewards["N_Drones"])],
+             linestyle='-', alpha=0.6)
+
+    # Scatter and line plots for ILP
+    plt.scatter(rewards["N_Drones"], rewards["ILP_Reward"], label="ILP", alpha=0.6)
+    plt.plot(sorted(rewards["N_Drones"]), [rewards["ILP_Reward"][i] for i in np.argsort(rewards["N_Drones"])],
+             linestyle='-', alpha=0.6)
+
+    plt.xlabel("Number of Drones")
+    plt.ylabel("Reward")
+    plt.title("Rewards vs Number of Drones")
+    plt.legend()
+    plt.grid(True)
+    plt.show()
+
+
+# Run the tests and plot the results
+# algo_tests()
+# rewards = load_all_results(N_DELIVERIES[0], N_STOP_POINTS[0], N_DRONES)
+# Run the tests and plot the results
+algo_tests()
+rewards = load_results(N_DELIVERIES, N_STOP_POINTS[0], N_DRONES[0])
+plot_all_rewards(rewards)
+
+
+
+# def load_all_results(n_deliveries, num_stop_points, N_DRONES):
+#     rewards = {
+#         "N_Drones": [],
+#         "Algorithm_1_Reward": [],
+#         "Algorithm_2_Reward": [],
+#         "Algorithm_3_Reward": [],
+#         "ILP_Reward": []
+#     }
+#     for num_drones in N_DRONES:
+#         file_name = f"results/result_n{n_deliveries}_d{num_drones}_s{num_stop_points}.csv"
+#         if os.path.exists(file_name):
+#             df = pd.read_csv(file_name)
+#             rewards["N_Drones"].extend([num_drones] * len(df))
+#             rewards["Algorithm_1_Reward"].extend(df["Algorithm_1_Reward"])
+#             rewards["Algorithm_2_Reward"].extend(df["Algorithm_2_Reward"])
+#             rewards["Algorithm_3_Reward"].extend(df["Algorithm_3_Reward"])
+#             rewards["ILP_Reward"].extend(df["ILP_Reward"])
+#     return rewards
+
+
