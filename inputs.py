@@ -14,11 +14,11 @@ from scipy.stats import zipf
 from shapely.geometry import LineString, Point
 from collections import namedtuple
 
-N_DELIVERIES = [5, 10, 15, 20 ]
-N_STOP_POINTS = [7]
+N_DELIVERIES =  [5, 10, 15, 20,30,  40, 60, 80 , 100]
+N_STOP_POINTS = [10]
 ZIPF_PARAM = [2]
 iterations = 10
-max_coord = 15
+max_coord = 30
 
 
 # E = [2500000]  # J
@@ -198,7 +198,7 @@ def define_deliveries(edges_in_path_lines, num_deliveries, min_edge_distance, ma
             # Ensure profit is within the specified range
             if profit_range[0] <= profit <= profit_range[1]:
                 # Random weight within the specified range
-                weight = np.random.uniform(weights_range[0], weights_range[1])
+                weight = random.randint(weights_range[0], weights_range[1])
 
                 deliveries.append({
                     'id': f"Delivery_{len(deliveries) + 1}",
@@ -233,11 +233,11 @@ def generate_problem_instance():
                 for i in range(iterations):
                     instances = []
                     num_nodes = 5
-                    target_distance = 200.0
+                    target_distance = 250.0
                     tolerance = 50
                     min_dist_between_stop_points = 3
                     profit_distribution = zipf(theta)
-                    weights_range = (0.5, 2.5)
+                    weights_range = (1, 5)
                     profit_range = (5,10)
 
                     # Step 1: Generate coordinates for nodes
@@ -265,9 +265,9 @@ def generate_problem_instance():
                     deliveries = define_deliveries(
                         edges_in_path_lines,
                         n_deliveries,
-                        min_edge_distance=1,
-                        max_edge_distance=14,
-                        min_delivery_distance=2,
+                        min_edge_distance=0.5,
+                        max_edge_distance=100,
+                        min_delivery_distance=1,
                         profit_distribution=profit_distribution,
                         weights_range=weights_range,
                         profit_range = profit_range

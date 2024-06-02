@@ -1,4 +1,3 @@
-
 import copy
 import pandas as pd
 import pickle
@@ -9,10 +8,10 @@ import matplotlib.pyplot as plt
 import os
 import random
 
-N_DELIVERIES = [5,10,15 ]
-N_STOP_POINTS = [7]
+N_DELIVERIES = [5, 10, 15, 20,30,  40, 60, 80 , 100]
+N_STOP_POINTS = [10]
 ZIPF_PARAM = [2]
-N_DRONES = [1]
+N_DRONES = [3]
 E = 44.54
 I = -133.33
 
@@ -38,8 +37,8 @@ class UAV:
 def generate_uavs(num_drones, weight_capacity_range, battery_capacity_range):
     uavs = []
     for i in range(num_drones):
-        weight_capacity = random.uniform(weight_capacity_range[0], weight_capacity_range[1])
-        battery_limit = random.uniform(battery_capacity_range[0], battery_capacity_range[1])
+        weight_capacity = random.randint(weight_capacity_range[0], weight_capacity_range[1])
+        battery_limit = random.randint(battery_capacity_range[0], battery_capacity_range[1])
         uav = UAV(i, battery_limit, weight_capacity, 6.3)
         uavs.append(uav)
     return uavs
@@ -82,8 +81,11 @@ def algo_tests():
                         print("***************algo3 ends****************")
                         uav_s = copy.deepcopy(uavs)
 
-                        print("***************optimal starts****************")
-                        output_ILP = ILP.opt_algo_cplex(prob[0][0], prob[0][1], uav_s, E, I, K, debug)
+                        if n_deliveries < 20:
+                            print("***************optimal starts****************")
+                            output_ILP = ILP.opt_algo_cplex(prob[0][0], prob[0][1], uav_s, E, I, K, debug)
+                        else:
+                            output_ILP = None
                         print("***************optimal ends****************")
                         uav_s = copy.deepcopy(uavs)
 
@@ -100,7 +102,6 @@ def algo_tests():
                             "ILP_Reward": output_ILP
                         }]
 
-
                         print(
                             "&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&7")
                         print("output1", output_1)
@@ -111,14 +112,14 @@ def algo_tests():
                         print(
                             "&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&7")
 
-                        # results = [{
-                        #     "Instance": prob,
-                        #     "N_Deliveries": n_deliveries,
-                        #     "Algorithm_1_Reward": output_1,
-                        #     "Algorithm_2_Reward": output_2,
-                        #     "Algorithm_3_Reward": output_3,
-                        #     "ILP_Reward": output_ILP
-                        # }]
+                        results = [{
+                            "Instance": prob,
+                            "N_Deliveries": n_deliveries,
+                            "Algorithm_1_Reward": output_1,
+                            "Algorithm_2_Reward": output_2,
+                            "Algorithm_3_Reward": output_3,
+                            "ILP_Reward": output_ILP
+                        }]
                         save_name = "results/result_n" + str(n_deliveries) + "_d" + str(num_drones) + "_s" + str(
                             num_stop_points) + ".csv"
                         df_results = pd.DataFrame(results)
@@ -218,7 +219,8 @@ def plot_all_rewards(rewards):
 
     # Scatter and line plots for ILP
     non_none_indices = [i for i, reward in enumerate(rewards["ILP_Reward"]) if reward is not None]
-    plt.scatter([rewards["N_Deliveries"][i] for i in non_none_indices], [rewards["ILP_Reward"][i] for i in non_none_indices], label="ILP", alpha=0.6)
+    plt.scatter([rewards["N_Deliveries"][i] for i in non_none_indices],
+                [rewards["ILP_Reward"][i] for i in non_none_indices], label="ILP", alpha=0.6)
     plt.plot(sorted([rewards["N_Deliveries"][i] for i in non_none_indices]),
              [rewards["ILP_Reward"][i] for i in sorted(non_none_indices)], linestyle='-', alpha=0.6)
 
@@ -270,8 +272,6 @@ algo_tests()
 rewards = load_results(N_DELIVERIES, N_STOP_POINTS[0], N_DRONES[0])
 plot_all_rewards(rewards)
 
-
-
 # def load_all_results(n_deliveries, num_stop_points, N_DRONES):
 #     rewards = {
 #         "N_Drones": [],
@@ -290,5 +290,3 @@ plot_all_rewards(rewards)
 #             rewards["Algorithm_3_Reward"].extend(df["Algorithm_3_Reward"])
 #             rewards["ILP_Reward"].extend(df["ILP_Reward"])
 #     return rewards
-
-
