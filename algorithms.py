@@ -5,17 +5,17 @@ import math
 
 
 #
-# class UAV:
-#     def __init__(self, id, battery_limit, weight_capacity, weight):
-#         self.id = id
-#         self.battery_limit = battery_limit
-#         self.weight_capacity = weight_capacity
-#         self.current_battery = battery_limit
-#         self.weight = weight
-#         self.route_ranges = []  # Keeps track of (start, end) ranges for this UAV's routes
-#
-#     def __repr__(self):
-#         return f"UAV(id={self.id}, battery_limit={self.battery_limit}, weight_capacity={self.weight_capacity}, current_battery={self.current_battery})"
+class UAV:
+    def __init__(self, id, battery_limit, weight_capacity, weight):
+        self.id = id
+        self.battery_limit = battery_limit
+        self.weight_capacity = weight_capacity
+        self.current_battery = battery_limit
+        self.weight = weight
+        self.route_ranges = []  # Keeps track of (start, end) ranges for this UAV's routes
+
+    def __repr__(self):
+        return f"UAV(id={self.id}, battery_limit={self.battery_limit}, weight_capacity={self.weight_capacity}, current_battery={self.current_battery})"
 
 
 def calculate_total_energy(route, E):
@@ -184,7 +184,7 @@ def find_best_candidate(route, route_2, route_energy, battery_limit, weight, wei
             # Calculate additional energy
 
             additional_energy = (E * cumulative_distance * delivery_weight
-                                 + new_distance * (E * (weight + later_weight)) + I)
+                                 + new_distance * (E * (weight + later_weight) + I))
 
             total_energy = route_energy + additional_energy
             total_weight = weight + unvisited_nodes[unvisited_node][1]
@@ -227,7 +227,7 @@ def get_best_route_3(stop_coordinates, deliveries, deliveries_2, uav, ratio, E, 
     weight_uav = uav.weight
     k = K
 
-    print("uav_stop_point_coords", uav_stop_point_dict)
+    # print("uav_stop_point_coords", uav_stop_point_dict)
 
     for i in range(len(stop_keys) - 1):
         start = stop_keys[i]
@@ -250,7 +250,7 @@ def get_best_route_3(stop_coordinates, deliveries, deliveries_2, uav, ratio, E, 
 
         route = [coord1, coord2]
         route_2 = [start, end]
-        route_energy = E * weight_uav * euclidean_distance(coord1, coord2)
+        route_energy = (E * weight_uav + I) * euclidean_distance(coord1, coord2)
         # # print(unvisited)
         # print(route)
         # route.insert(1,unvisited_nodes_copy["D1"][2])
@@ -662,12 +662,15 @@ def DRA_1(stop_coordinates, deliveries, uav_s, E, I, K, debug):
 
 
 def DRA_2(stop_coordinates, deliveries, uav_s, E, I, K, debug):
-    # print(deliveries)
+    print(deliveries)
+    print(stop_coordinates)
     # uav_s = [
     #     UAV(id=1, battery_limit=100, weight_capacity=20),
     #     # UAV(id=2, battery_limit=70, weight_capacity=60),
     #     # UAV(id=3, battery_limit=70, weight_capacity=55),
     # ]
+    # uav_s_2 = [UAV(id=0, battery_limit=4293.661484779491, weight_capacity=4.02998615926343 ,weight = 2.7)]
+
     # uav_s = [UAV(id=i, battery_limit=B, weight_capacity=W, weight=weight_uav) for i in range(num_drones)]
 
     total_reward = 0
@@ -701,6 +704,7 @@ def DRA_2(stop_coordinates, deliveries, uav_s, E, I, K, debug):
                                                                uav, ratio, E, I, K, uav_stop_point_dict, debug)
         # best_route, reward, energy_consumed = get_best_route(stop_coordinates, deliveries_copy,
         #                                                      uav, ratio, E, K, uav_stop_point_dict, debug)
+        print("wnwegy consumed", energy_consumed)
         if not best_route:
             break  # If no valid route, stop the loop
 
@@ -725,13 +729,14 @@ def DRA_2(stop_coordinates, deliveries, uav_s, E, I, K, debug):
         # start = best_route[0]
         # end = best_route[-1]
         # uav.route_ranges.append((start, ord(end[0])))  # Use ASCII to get numerical order
-        if debug:
-            print(f"Selected UAV: {uav.id}")
-            print(f"Best Route: {best_route}")
-            print(f"Reward: {reward}")
-            # print(f"Total Distance: {total_distance}")
-            print(f"Remaining Battery: {uav.current_battery}")
-            print(f"Total Reward: {total_reward}")
+        # debug = 0
+        # if debug:
+        print(f"Selected UAV: {uav.id}")
+        print(f"Best Route: {best_route}")
+        print(f"Reward: {reward}")
+        # print(f"Total Distance: {total_distance}")
+        print(f"Remaining Battery: {uav.current_battery}")
+        print(f"Total Reward: {total_reward}")
 
     print("Final Total Reward_2:", total_reward)
     return total_reward

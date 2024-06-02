@@ -9,12 +9,12 @@ import matplotlib.pyplot as plt
 import os
 import random
 
-N_DELIVERIES = [5, 15, 20]
+N_DELIVERIES = [5,10,15 ]
 N_STOP_POINTS = [7]
 ZIPF_PARAM = [2]
 N_DRONES = [1]
 E = 44.54
-I = 27.01
+I = -133.33
 
 debug = 0
 K = 3
@@ -40,7 +40,7 @@ def generate_uavs(num_drones, weight_capacity_range, battery_capacity_range):
     for i in range(num_drones):
         weight_capacity = random.uniform(weight_capacity_range[0], weight_capacity_range[1])
         battery_limit = random.uniform(battery_capacity_range[0], battery_capacity_range[1])
-        uav = UAV(i, battery_limit, weight_capacity, 2)
+        uav = UAV(i, battery_limit, weight_capacity, 6.3)
         uavs.append(uav)
     return uavs
 
@@ -85,6 +85,11 @@ def algo_tests():
                         print("***************optimal starts****************")
                         output_ILP = ILP.opt_algo_cplex(prob[0][0], prob[0][1], uav_s, E, I, K, debug)
                         print("***************optimal ends****************")
+                        uav_s = copy.deepcopy(uavs)
+
+                        # print("***************optimal starts****************")
+                        # output_ILP_2 = ILP.opt_algo_cplex_2(prob[0][0], prob[0][1], uav_s, E, I, K, debug)
+                        # print("***************optimal ends****************")
 
                         results = [{
                             "Instance": prob,
@@ -102,6 +107,7 @@ def algo_tests():
                         print("output2", output_2)
                         print("output3", output_3)
                         print("outputILP", output_ILP)
+                        # print("outputILP_2", output_ILP_2)
                         print(
                             "&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&7")
 
