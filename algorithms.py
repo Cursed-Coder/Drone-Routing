@@ -135,7 +135,7 @@ def calculate_ratio(reward, distance):
 #     # print("route_energy_2", route_energy)
 #     return best_candidate, best_candidate_add_energy
 
-def find_best_candidate(route, route_2, route_energy, battery_limit, weight, weight_capacity, unvisited_nodes, E, I,
+def find_best_candidate(route, route_2, route_energy, battery_limit, weight, weight_capacity, unvisited_nodes, E,delta,
                         deliveries_2, debug):
     # Find the best candidate node to add to the route
     best_candidate = None
@@ -184,7 +184,7 @@ def find_best_candidate(route, route_2, route_energy, battery_limit, weight, wei
             # Calculate additional energy
 
             additional_energy = (E * cumulative_distance * delivery_weight
-                                 + new_distance * (E * (weight + later_weight) + I))
+                                 + new_distance * (E * (weight + later_weight) +delta))
 
             total_energy = route_energy + additional_energy
             total_weight = weight + unvisited_nodes[unvisited_node][1]
@@ -213,215 +213,240 @@ def calc_dist(route):
     return total_dist
 
 
-def get_best_route_3(stop_coordinates, deliveries, deliveries_2, uav, ratio, E, I, K, uav_stop_point_dict, debug):
+def get_best_route_3(stop_coordinates, deliveries, deliveries_2, uav_s, ratio, E,delta, K, uav_stop_point_dict, debug):
     stop_keys = list(stop_coordinates.keys())
     max_reward = 0
     best_route = []
     best_route_2 = []
     best_route_energy = 0
+    best_uav = None
     total_distance = 0
     # energy_per_unit_distance = 1
     total_dist = 0
-    battery_limit = uav.current_battery
-    weight_capacity = uav.weight_capacity
-    weight_uav = uav.weight
-    k = K
+    for uav in uav_s:
+        battery_limit = uav.current_battery
+        weight_capacity = uav.weight_capacity
+        weight_uav = uav.weight
+        k = K
 
-    # print("uav_stop_point_coords", uav_stop_point_dict)
+        # print("uav_stop_point_coords", uav_stop_point_dict)
 
-    for i in range(len(stop_keys) - 1):
-        start = stop_keys[i]
-        end = stop_keys[i + 1]
+        for i in range(len(stop_keys) - 1):
+            start = stop_keys[i]
+            end = stop_keys[i + 1]
 
-        if start in uav_stop_point_dict[uav]:
-            continue
-        unvisited_nodes_copy = deliveries.copy()
+            if start in uav_stop_point_dict[uav]:
+                continue
+            unvisited_nodes_copy = deliveries.copy()
 
-        # print(unvisited_nodes_copy)
-        weight = 0
+            # print(unvisited_nodes_copy)
+            weight = 0
 
-        reward = 0
-        coord1 = (stop_coordinates[start][1][0], stop_coordinates[start][1][1])
-        coord2 = (stop_coordinates[end][1][0], stop_coordinates[end][1][1])
+            reward = 0
+            coord1 = (stop_coordinates[start][1][0], stop_coordinates[start][1][1])
+            coord2 = (stop_coordinates[end][1][0], stop_coordinates[end][1][1])
 
-        if debug:
-            print("Coord", start, " ", coord1)
-            print("Coord", end, " ", coord2)
+            if debug:
+                print("Coord", start, " ", coord1)
+                print("Coord", end, " ", coord2)
 
-        route = [coord1, coord2]
-        route_2 = [start, end]
-        route_energy = (E * weight_uav + I) * euclidean_distance(coord1, coord2)
-        # # print(unvisited)
-        # print(route)
-        # route.insert(1,unvisited_nodes_copy["D1"][2])
-        las_node = coord1
-        dist = 0
-        # print("route 0",route[0])
-        # print("route 1",route[1])
-        # print(euclidean_distance(route[0],route[1]))
+            route = [coord1, coord2]
+            route_2 = [start, end]
+            route_energy = (E * weight_uav +delta) * euclidean_distance(coord1, coord2)
+            # # print(unvisited)
+            # print(route)
+            # route.insert(1,unvisited_nodes_copy["D1"][2])
+            las_node = coord1
+            dist = 0
+            # print("route 0",route[0])
+            # print("route 1",route[1])
+            # print(euclidean_distance(route[0],route[1]))
 
-        while unvisited_nodes_copy:
-            best_candidate, best_candidate_add_energy = find_best_candidate(route, route_2, route_energy, battery_limit,
-                                                                            weight_uav, weight_capacity,
-                                                                            unvisited_nodes_copy,
-                                                                            E,I, deliveries_2, debug)
-            if best_candidate:
-                node, index = best_candidate
-                best_cand_weight= unvisited_nodes_copy[node][1]
-                if route_energy + best_candidate_add_energy <= battery_limit and weight + best_cand_weight <= weight_capacity  and k > 0:
-                    k = k - 1
-                    reward = reward + unvisited_nodes_copy[node][0]
-                    weight = weight + unvisited_nodes_copy[node][1]
-                    # print("best_candidate", node)
-                    route_energy += best_candidate_add_energy
-                    route.insert(index + 1, unvisited_nodes_copy[node][2])
-                    route_2.insert(index + 1, node)
-                    # print("node",node)
+            while unvisited_nodes_copy:
+                best_candidate, best_candidate_add_energy = find_best_candidate(route, route_2, route_energy,
+                                                                                battery_limit,
+                                                                                weight_uav, weight_capacity,
+                                                                                unvisited_nodes_copy,
+                                                                                E,delta, deliveries_2, debug)
+                if best_candidate:
+                    node, index = best_candidate
+                    best_cand_weight = unvisited_nodes_copy[node][1]
+                    if route_energy + best_candidate_add_energy <= battery_limit and weight + best_cand_weight <= weight_capacity and k > 0:
+                        k = k - 1
+                        reward = reward + unvisited_nodes_copy[node][0]
+                        weight = weight + unvisited_nodes_copy[node][1]
+                        # print("best_candidate", node)
+                        route_energy += best_candidate_add_energy
+                        route.insert(index + 1, unvisited_nodes_copy[node][2])
+                        route_2.insert(index + 1, node)
+                        # print("node",node)
 
-                    # dist = dist + euclidean_distance(las_node, unvisited_nodes_copy[node][2])
-                    las_node = unvisited_nodes_copy[node][2]
-                unvisited_nodes_copy.pop(node)
-            else:
-                break
+                        # dist = dist + euclidean_distance(las_node, unvisited_nodes_copy[node][2])
+                        las_node = unvisited_nodes_copy[node][2]
+                    unvisited_nodes_copy.pop(node)
+                else:
+                    break
 
-        if len(route) > 2:
-            dist = dist + euclidean_distance(las_node, coord2)
-            if reward > max_reward:
-                max_reward = reward
-                best_route = route
-                best_route_2 = route_2
-                best_route_energy = route_energy
+            if len(route) > 2:
+                dist = dist + euclidean_distance(las_node, coord2)
+                if reward > max_reward:
+                    max_reward = reward
+                    best_route = route
+                    best_route_2 = route_2
+                    best_route_energy = route_energy
+                    best_uav = uav
+                elif reward == max_reward and route_energy < best_route_energy:
+                    best_route = route
+                    best_route_2 = route_2
+                    best_route_energy = route_energy
+                    best_uav = uav
 
     # total_dist = calc_dist(best_route)
     if debug:
         print("Best Route energy", best_route_energy)
         print("best_route_2", best_route_2)
-    return best_route_2, max_reward, best_route_energy
+    return best_route_2, max_reward, best_route_energy, best_uav
 
 
-def get_best_route(stop_coordinates, deliveries, uav, ratio, E, I, K, uav_stop_point_dict, debug):
+def get_best_route(stop_coordinates, deliveries, uav_s, ratio, E,delta, K, uav_stop_point_dict, debug):
     max_reward = 0
+    max_ratio = -2
     best_route = []
     total_distance = 0
     total_energy_consumed = 0
     stop_keys = list(stop_coordinates.keys())
     k = K
-    battery_limit = uav.current_battery
-    weight_capacity = uav.weight_capacity
-    weight_uav = uav.weight
-    ##############################################################################################
-    # Loop through all but the last stop to get s and s+1
-    for i in range(len(stop_keys) - 1):
-        s = stop_keys[i]  # Current stop
-        s_next = stop_keys[i + 1]  # Next stop
+    best_uav = None
+    for uav in uav_s:
+        battery_limit = uav.current_battery
+        weight_capacity = uav.weight_capacity
+        weight_uav = uav.weight
+        ##############################################################################################
+        # Loop through all but the last stop to get s and s+1
+        for i in range(len(stop_keys) - 1):
+            s = stop_keys[i]  # Current stop
+            s_next = stop_keys[i + 1]  # Next stop
 
-        if s in uav_stop_point_dict[uav]:
-            continue
+            if s in uav_stop_point_dict[uav]:
+                continue
 
-        # min_dist = ratio * (stop_coordinates[s_next][0] - stop_coordinates[s][0])
-        # print("S:",s);
-        # print("Sn:",s_next);
+            # min_dist = ratio * (stop_coordinates[s_next][0] - stop_coordinates[s][0])
+            # print("S:",s);
+            # print("Sn:",s_next);
 
-        # Loop through each stop on the truck's predefined route
-        # for s in stop_coordinates:///
-        # if is_within_range(stop_coordinates[s][1], route_ranges):
-        #     continue  # Skip stops within existing route ranges
+            # Loop through each stop on the truck's predefined route
+            # for s in stop_coordinates:///
+            # if is_within_range(stop_coordinates[s][1], route_ranges):
+            #     continue  # Skip stops within existing route ranges
 
-        current_route = []
-        current_reward = 0
-        current_battery = battery_limit
-        current_weight = 0
-        current_node = stop_coordinates[s][1]
-        next_node = stop_coordinates[s_next][1]
-        last_node = None
-        current_total_distance = 0
-        current_route.append(s)
-        total_weight = 0
-        dist_s_to_s_next =  euclidean_distance(current_node, next_node)
-        energy_consumed = E * weight_uav * dist_s_to_s_next + I * dist_s_to_s_next
-        prev_dist_to_stop = dist_s_to_s_next
+            current_route = []
+            current_reward = 0
+            current_battery = battery_limit
+            current_weight = 0
+            current_node = stop_coordinates[s][1]
+            next_node = stop_coordinates[s_next][1]
+            last_node = None
+            current_total_distance = 0
+            current_route.append(s)
+            total_weight = 0
+            dist_s_to_s_next = euclidean_distance(current_node, next_node)
+            energy_consumed = E * weight_uav * dist_s_to_s_next +delta * dist_s_to_s_next
+            prev_dist_to_stop = dist_s_to_s_next
 
-        available_deliveries = deliveries.copy()  # Copy deliveries to reset at each stop
-        # print("For stop point ",s)
+            available_deliveries = deliveries.copy()  # Copy deliveries to reset at each stop
+            # print("For stop point ",s)
 
-        while len(available_deliveries) > 0 and k > 0:
-            has_constraint = False
-            max_value = -float("inf")
-            next_node = None
+            while len(available_deliveries) > 0 and k > 0:
+                has_constraint = False
+                max_value = -float("inf")
+                next_node = None
 
-            #     # Find the best delivery (node) that meets constraints and is not within any existing range
-            mx = -1e9
-            best_del = None
-            for q in available_deliveries:
-                # if is_within_range(q["coordinates"], route_ranges):
-                #         #     continue  # Skip nodes within existing route ranges
+                #     # Find the best delivery (node) that meets constraints and is not within any existing range
+                mx = -1e9
+                best_del = None
+                for q in available_deliveries:
+                    # if is_within_range(q["coordinates"], route_ranges):
+                    #         #     continue  # Skip nodes within existing route ranges
 
-                delivery = available_deliveries[q]
-                # distance_to_q = euclidean_distance(current_node, current_node)  # Distance from current node to delivery
-                # print("Deliveryyyyy",q)
+                    delivery = available_deliveries[q]
+                    # distance_to_q = euclidean_distance(current_node, current_node)  # Distance from current node to delivery
+                    # print("Deliveryyyyy",q)
+                    distance_to_q = euclidean_distance(current_node,
+                                                       delivery[2])  # Distance from current node to delivery
+                    distance_from_q_to_cq = euclidean_distance(delivery[2], stop_coordinates[s_next][
+                        1])  # Distance from delivery to closest stop
+                    # required_battery = E * (distance_to_q + distance_from_q_to_cq)
+                    total_poss_dist = current_total_distance + distance_to_q + distance_from_q_to_cq
+
+                    value = delivery[0] / ((current_total_distance + distance_to_q) * delivery[1] * E + (
+                            distance_to_q + distance_from_q_to_cq - prev_dist_to_stop) * (weight_uav * E +delta))
+
+                    if value > mx:
+                        best_del = q
+                        mx = value
+
+                # print("Bd", best_del)
+
+                delivery = available_deliveries[best_del]
                 distance_to_q = euclidean_distance(current_node, delivery[2])  # Distance from current node to delivery
                 distance_from_q_to_cq = euclidean_distance(delivery[2], stop_coordinates[s_next][
                     1])  # Distance from delivery to closest stop
-                # required_battery = E * (distance_to_q + distance_from_q_to_cq)
+                # required_battery = E * (total_weight + ) * (distance_to_q + distance_from_q_to_cq)
                 total_poss_dist = current_total_distance + distance_to_q + distance_from_q_to_cq
+                weight_of_delivery = delivery[1]
+                total_poss_energy = energy_consumed + (current_total_distance + distance_to_q) * (
+                    weight_of_delivery) * E + (distance_to_q + distance_from_q_to_cq - prev_dist_to_stop) * (
+                                                weight_uav * E +delta)
+                # print("Delivery", delivery)
 
-                value = delivery[0] / ((current_total_distance + distance_to_q) * delivery[1] * E + (
-                        distance_to_q + distance_from_q_to_cq - prev_dist_to_stop) * (weight_uav * E + I))
+                if current_battery >= total_poss_energy and current_weight + delivery[
+                    1] <= weight_capacity:
+                    # energy_consumed += (current_total_distance + distance_to_q) * E * weight_of_delivery + (distance_to_q) * weight_uav * E
+                    energy_consumed = total_poss_energy
+                    # current_battery -= E * (euclidean_distance(current_node, available_deliveries[best_del][2]))
+                    # print("Current battery", current_battery)
+                    k = k - 1
+                    current_weight += available_deliveries[best_del][1]
+                    current_route.append(best_del)
+                    last_node = best_del
+                    # print("Next Node",best_del)
+                    current_reward += available_deliveries[best_del][0]
+                    current_total_distance += euclidean_distance(current_node, available_deliveries[best_del][2])
+                    current_node = available_deliveries[best_del][2]
+                    total_weight += available_deliveries[best_del][1]
+                    # print("Current Node",current_node)
 
-                if value > mx:
-                    best_del = q
-                    mx = value
+                delivery = available_deliveries.pop(best_del)  # Remove selected delivery
 
-            # print("Bd", best_del)
+            #deltaf there's a valid last node, return to the closest stop
+            if last_node:
+                distance_from_last_to_closest = euclidean_distance(current_node, stop_coordinates[s_next][1])
+                current_total_distance += distance_from_last_to_closest
+                current_route.append(s_next)
+                energy_consumed += distance_from_last_to_closest * weight_uav * E
+                # current_battery -= E * distance_from_last_to_closest
 
-            delivery = available_deliveries[best_del]
-            distance_to_q = euclidean_distance(current_node, delivery[2])  # Distance from current node to delivery
-            distance_from_q_to_cq = euclidean_distance(delivery[2], stop_coordinates[s_next][
-                1])  # Distance from delivery to closest stop
-            # required_battery = E * (total_weight + ) * (distance_to_q + distance_from_q_to_cq)
-            total_poss_dist = current_total_distance + distance_to_q + distance_from_q_to_cq
-            weight_of_delivery = delivery[1]
-            total_poss_energy = energy_consumed + (current_total_distance + distance_to_q) * (
-                    weight_of_delivery) * E + (distance_to_q + distance_from_q_to_cq - prev_dist_to_stop) * (weight_uav * E + I)
-            # print("Delivery", delivery)
+                # if total_energy_consumed>0 and current_reward/total_energy_consumed > max_ratio:
+                #     max_ratio = current_reward/total_energy_consumed
+                #     max_reward = current_reward
+                #     total_energy_consumed = energy_consumed
+                #     best_route = current_route
+                #     best_uav = uav
+                if current_reward > max_reward:
+                    max_reward = current_reward
+                    total_energy_consumed = energy_consumed
+                    best_route = current_route
+                    best_uav = uav
+                    total_distance = current_total_distance
+                elif current_reward == max_reward and energy_consumed < total_energy_consumed:
+                    total_energy_consumed = energy_consumed
+                    best_route = current_route
+                    best_uav = uav
 
-            if current_battery >= total_poss_energy and current_weight + delivery[
-                1] <= weight_capacity:
-                # energy_consumed += (current_total_distance + distance_to_q) * E * weight_of_delivery + (distance_to_q) * weight_uav * E
-                energy_consumed = total_poss_energy
-                # current_battery -= E * (euclidean_distance(current_node, available_deliveries[best_del][2]))
-                # print("Current battery", current_battery)
-                k = k - 1
-                current_weight += available_deliveries[best_del][1]
-                current_route.append(best_del)
-                last_node = best_del
-                # print("Next Node",best_del)
-                current_reward += available_deliveries[best_del][0]
-                current_total_distance += euclidean_distance(current_node, available_deliveries[best_del][2])
-                current_node = available_deliveries[best_del][2]
-                total_weight += available_deliveries[best_del][1]
-                # print("Current Node",current_node)
-
-            delivery = available_deliveries.pop(best_del)  # Remove selected delivery
-
-        # If there's a valid last node, return to the closest stop
-        if last_node:
-            distance_from_last_to_closest = euclidean_distance(current_node, stop_coordinates[s_next][1])
-            current_total_distance += distance_from_last_to_closest
-            current_route.append(s_next)
-            energy_consumed += distance_from_last_to_closest * weight_uav * E
-            # current_battery -= E * distance_from_last_to_closest
-
-            if current_reward > max_reward:
-                max_reward = current_reward
-                total_energy_consumed = energy_consumed
-                best_route = current_route
-                total_distance = current_total_distance  # Track the total distance travelled
-
-    return best_route, max_reward, total_energy_consumed
+    return best_route, max_reward, total_energy_consumed, best_uav
 
 
-def find_best_stop_pair(truck_stops, stop_keys, deliveries, uavs):
+def find_best_stop_pair(truck_stops, stop_keys, deliveries, E,delta, uavs):
     results = []
 
     for delivery in deliveries:
@@ -454,10 +479,10 @@ def find_best_stop_pair(truck_stops, stop_keys, deliveries, uavs):
     return results
 
 
-def build_flights(truck_stops, deliveries, uavs, E, I, K):
+def build_flights(truck_stops, deliveries, uavs, E,delta, K):
     # Find the best stop pair for each delivery
     stop_keys = list(truck_stops.keys())
-    best_stop_pairs = find_best_stop_pair(truck_stops, stop_keys, deliveries, uavs)
+    best_stop_pairs = find_best_stop_pair(truck_stops, stop_keys, deliveries, E,delta, uavs)
 
     # Sort deliveries based on their launch point and ratio of profit to distance
     sorted_deliveries = sorted(best_stop_pairs,
@@ -503,7 +528,8 @@ def build_flights(truck_stops, deliveries, uavs, E, I, K):
                             distance_to_delivery + distance_back_to_next_stop - last_delivery_to_stop_distance)
                     # energy_last_append = dist_last_append * E
                     delivery_wt_extra_dist = current_flight_dist - last_delivery_to_stop_distance + distance_to_delivery
-                    energy_needed = current_energy + delivery_wt_extra_dist * d_weight * E + uav_wt_append_dist * (uav.weight * E + I)
+                    energy_needed = current_energy + delivery_wt_extra_dist * d_weight * E + uav_wt_append_dist * (
+                                uav.weight * E +delta)
                     if (current_weight + d_weight <= uav.weight_capacity and
                             energy_needed <= remaining_battery and k > 0):
                         current_flight.append(delivery)
@@ -518,7 +544,7 @@ def build_flights(truck_stops, deliveries, uavs, E, I, K):
                         uav_stop_point_dict[uav].append(start_stop)
                         current_flight = []
                         k = K
-                        current_energy += energy_needed
+                        # current_energy = energy_needed
                         current_weight = 0
                         current_flight_dist = 0
                         last_delivery_to_stop_distance = 0
@@ -532,7 +558,8 @@ def build_flights(truck_stops, deliveries, uavs, E, I, K):
 
                 if len(current_flight) == 0:
                     dist_last_append = (distance_to_delivery + distance_back_to_next_stop)
-                    energy_needed = distance_to_delivery * d_weight * E + (distance_to_delivery + distance_back_to_next_stop) * (uav.weight * E + I)
+                    energy_needed = distance_to_delivery * d_weight * E + (
+                                distance_to_delivery + distance_back_to_next_stop) * (uav.weight * E +delta)
                     if (current_weight + d_weight <= uav.weight_capacity and
                             energy_needed <= remaining_battery and k > 0):
                         k = k - 1
@@ -569,13 +596,13 @@ def select_best_flight(flights, deliveries):
     return best_uav, best_flight, max_reward
 
 
-def iterative_build_flights(truck_stops, deliveries, uavs, E, I, K):
+def iterative_build_flights(truck_stops, deliveries, uavs, E,delta, K):
     all_flights = []
     remaining_deliveries = deliveries.copy()
     remaining_uavs = uavs.copy()
 
     while remaining_uavs and remaining_deliveries:
-        flights = build_flights(truck_stops, remaining_deliveries, remaining_uavs, E, I, K)
+        flights = build_flights(truck_stops, remaining_deliveries, remaining_uavs, E,delta, K)
         best_uav, best_flight, max_reward = select_best_flight(flights, remaining_deliveries)
 
         if best_flight:
@@ -589,7 +616,8 @@ def iterative_build_flights(truck_stops, deliveries, uavs, E, I, K):
     return all_flights
 
 
-def DRA_1(stop_coordinates, deliveries, uav_s, E, I, K, debug):
+def DRA_1(stop_coordinates, deliveries, uav_s, E,delta, K, debug):
+    print(stop_coordinates)
     # uavs = [
     #     UAV(id=1, battery_limit=100, weight_capacity=20, weight = 1),
     #     # UAV(id=2, battery_limit=70, weight_capacity=60, weight = 1),
@@ -609,24 +637,24 @@ def DRA_1(stop_coordinates, deliveries, uav_s, E, I, K, debug):
     # Main loop for selecting UAVs and determining the best route
     while True:
         # print(deliveries)
-        # If there are no more available deliveries, stop
+        #deltaf there are no more available deliveries, stop
         if not deliveries_copy:
             break
         # print(deliveries)
 
         # Find the UAV with the most battery left
-        uav = select_uav_with_most_battery(uav_s)
+        # uav = select_uav_with_most_battery(uav_s)
 
-        # If no UAV with sufficient battery, break the loop
-        if not uav or uav.current_battery <= 0:
-            break
+        #deltaf no UAV with sufficient battery, break the loop
+        # if not uav or uav.current_battery <= 0:
+        #     break
 
         # Get the best route with the current UAV, taking into account existing route ranges
-        best_route, reward, energy_consumed = get_best_route(stop_coordinates, deliveries_copy, uav, ratio,
-                                                             E, I, K, uav_stop_point_dict, debug)
+        best_route, reward, energy_consumed, uav = get_best_route(stop_coordinates, deliveries_copy, uav_s, ratio,
+                                                                  E,delta, K, uav_stop_point_dict, debug)
 
         if not best_route:
-            break  # If no valid route, stop the loop
+            break  #deltaf no valid route, stop the loop
 
         # Update the UAV's battery based on the total distance travelled
         battery_usage = energy_consumed  # Adjust energy usage based on distance
@@ -661,9 +689,9 @@ def DRA_1(stop_coordinates, deliveries, uav_s, E, I, K, debug):
     return total_reward
 
 
-def DRA_2(stop_coordinates, deliveries, uav_s, E, I, K, debug):
-    print(deliveries)
-    print(stop_coordinates)
+def DRA_2(stop_coordinates, deliveries, uav_s, E,delta, K, debug):
+    # print(deliveries)
+    # print(stop_coordinates)
     # uav_s = [
     #     UAV(id=1, battery_limit=100, weight_capacity=20),
     #     # UAV(id=2, battery_limit=70, weight_capacity=60),
@@ -684,29 +712,30 @@ def DRA_2(stop_coordinates, deliveries, uav_s, E, I, K, debug):
     # Main loop for selecting UAVs and determining the best route
     while True:
         # print(deliveries)
-        # If there are no more available deliveries, stop
+        #deltaf there are no more available deliveries, stop
         if not deliveries_copy:
             break
         # print(deliveries)
 
         # Find the UAV with the most battery left
-        uav = select_uav_with_most_battery(uav_s)
+        # uav = select_uav_with_most_battery(uav_s)
 
-        # If no UAV with sufficient battery, break the loop
-        if not uav or uav.current_battery <= 0:
-            break
+        #deltaf no UAV with sufficient battery, break the loop
+        # if not uav or uav.current_battery <= 0:
+        #     break
         # def get_best_route_3(stop_coordinates, deliveries, deliveries_2, uav,
         #                      route_ranges, ratio, E, K, uav_stop_point_dict, debug):
         # Get the best route with the current UAV, taking into account existing route ranges
         # def get_best_route_3(stop_coordinates, deliveries, deliveries_2, uav, ratio, E, K, uav_stop_point_dict, debug):
 
-        best_route, reward, energy_consumed = get_best_route_3(stop_coordinates, deliveries_copy, deliveries_copy_2,
-                                                               uav, ratio, E, I, K, uav_stop_point_dict, debug)
+        best_route, reward, energy_consumed, uav = get_best_route_3(stop_coordinates, deliveries_copy,
+                                                                    deliveries_copy_2,
+                                                                    uav_s, ratio, E,delta, K, uav_stop_point_dict, debug)
         # best_route, reward, energy_consumed = get_best_route(stop_coordinates, deliveries_copy,
         #                                                      uav, ratio, E, K, uav_stop_point_dict, debug)
         print("wnwegy consumed", energy_consumed)
         if not best_route:
-            break  # If no valid route, stop the loop
+            break  #deltaf no valid route, stop the loop
 
         # Update the UAV's battery based on the total distance travelled
         # battery_usage = total_distance * E  # Adjust energy usage based on distance
@@ -743,10 +772,10 @@ def DRA_2(stop_coordinates, deliveries, uav_s, E, I, K, debug):
 
 
 # Truck stop points (in order)
-def DRA_3(stop_coordinates, deliveries, uav_s, E, I, K, debug):
+def DRA_3(stop_coordinates, deliveries, uav_s, E,delta, K, debug):
     # uav_s = [UAV(id=i, battery_limit=B, weight_capacity=W, weight=weight_uav) for i in range(num_drones)]
     # Build flights for UAVs
-    all_flights = iterative_build_flights(stop_coordinates, deliveries, uav_s, E, I, K)
+    all_flights = iterative_build_flights(stop_coordinates, deliveries, uav_s, E,delta, K)
     total_reward = 0
     for uav, flight in all_flights:
         print(f"UAV {uav.id} with flight: {flight}")

@@ -6,6 +6,7 @@ import itertools as it
 import math
 import scipy.stats as stats
 import pickle
+import os
 import networkx as nx
 import numpy as np
 import random
@@ -14,11 +15,11 @@ from scipy.stats import zipf
 from shapely.geometry import LineString, Point
 from collections import namedtuple
 
-N_DELIVERIES =  [5, 10, 15, 20,30,  40, 60, 80 , 100]
-N_STOP_POINTS = [10]
+N_DELIVERIES = [5,10,15, 20, 30, 40, 60, 80, 100]
+N_STOP_POINTS = [30]
 ZIPF_PARAM = [2]
-iterations = 10
-max_coord = 30
+iterations = 100
+max_coord = 20
 
 
 # E = [2500000]  # J
@@ -215,7 +216,6 @@ def define_deliveries(edges_in_path_lines, num_deliveries, min_edge_distance, ma
         edges_in_path_lines)]
 
 
-
 def save_data_to_file(data, filename):
     """
     Save the problem instance data to a file.
@@ -225,105 +225,426 @@ def save_data_to_file(data, filename):
 
 
 # Example usage
+# def generate_problem_instance():
+#     global N_DELIVERIES, ZIPF_PARAM, N_STOP_POINTS
+#     for theta in ZIPF_PARAM:
+#         for num_stop_points in N_STOP_POINTS:
+#             # num_stop_points = 2 * n_deliveries
+#             instances = []
+#             num_nodes = 5
+#             target_distance = 250.0
+#             tolerance = 50
+#             min_dist_between_stop_points = 5
+#             profit_distribution = zipf(theta)
+#             weights_range = (1, 5)
+#             profit_range = (5, 5)
+#             coordinates = generate_random_coordinates(num_nodes)
+#             graph = create_complete_graph_with_weights(coordinates)
+#             node_names = list(coordinates.keys())
+#             random_order, edges_in_path, total_distance = generate_random_cycle(graph, node_names,
+#                                                                                 target_distance,
+#                                                                                 tolerance)
+#
+#             # Step 4: Define stop points along the path
+#             stop_point_coords = define_stop_points(edges_in_path, coordinates, graph,
+#                                                    min_dist_between_stop_points,
+#                                                    num_stop_points)
+#
+#             # Step 5: Define deliveries with constraints
+#             edges_in_path_lines = [LineString([coordinates[edge[0]], coordinates[edge[1]]]) for edge in
+#                                    edges_in_path]
+#             stop_coordinates = {}
+#             for index, s in enumerate(stop_point_coords):
+#                 # Generate the key using the ASCII value of 'A' + index
+#                 key = f"s{index + 1}"
+#                 # Convert the array to a tuple
+#                 # coordinates = tuple(array)
+#                 # Add the key and coordinates to the dictionary
+#                 stop_coordinates[key] = s
+#             for n_deliveries in N_DELIVERIES:
+#                 for i in range(iterations):
+#                     deliveries = define_deliveries(
+#                         edges_in_path_lines,
+#                         n_deliveries,
+#                         min_edge_distance=0.5,
+#                         max_edge_distance=100,
+#                         min_delivery_distance=1,
+#                         profit_distribution=profit_distribution,
+#                         weights_range=weights_range,
+#                         profit_range=profit_range
+#                     )
+#
+#                     # # Step 6: Output the minimum closest distance between deliveries and edges
+#                     delivery_points = [Point(delivery['coordinates']) for delivery in deliveries]
+#                     closest_distances = [min([line.distance(delivery_point) for line in edges_in_path_lines]) for
+#                                          delivery_point
+#                                          in delivery_points]
+#                     min_closest_distance = min(closest_distances) if closest_distances else None
+#
+#                     deliveries_2 = {}
+#                     for index, delivery in enumerate(deliveries):
+#                         # Create a new key for each delivery (D1, D2, D3, etc.)
+#                         key = f"p{index + 1}"
+#
+#                         # Map the original profit to reward, and keep the other properties
+#                         deliveries_2[key] = {
+#                             0: delivery["profit"],  # Example reward mapping
+#                             1: delivery["weight"],  # Example weight adjustment
+#                             2: tuple(delivery["coordinates"]),  # Convert to tuple
+#                         }
+#
+#                     # Step 7: Save data to file
+#                     instances.append([stop_coordinates, deliveries_2])
+#                     # data_to_save = {
+#                     #     "coordinates": coordinates,
+#                     #     "graph_edges": [(edge[0], edge[1], graph[edge[0]][edge[1]]['weight']) for edge in graph.edges],
+#                     #     "edges_in_path": edges_in_path,
+#                     #     "stop_points": stop_point_coords,
+#                     #     "deliveries": deliveries
+#                     # }
+#                     # print("Hello")
+#                     name = "problems-2/problem_n" + str(n_deliveries) + "_t" + str(theta) + "_s" + str(
+#                         num_stop_points) + ".dat"
+#
+#                     save_data_to_file(instances, name)
+#
+#                     print("Truck's Path:", " -> ".join(random_order))
+#                     print("Coordinates of Nodes:")
+#                     for node, coord in coordinates.items():
+#                         print(f"{node}: {coord}")
+#
+#                     print("Deliveries (Profit, Weight, Coordinates):")
+#                     for delivery in deliveries:
+#                         print(
+#                             f"{delivery['id']} - Profit: {delivery['profit']}, Weight: {delivery['weight']}, Coordinates: {delivery['coordinates']}")
+#
+#                     print("Minimum distance between any delivery and any edge:", min_closest_distance)
+
+# def generate_problem_instance():
+#     global N_DELIVERIES, ZIPF_PARAM, N_STOP_POINTS
+#
+#     for theta in ZIPF_PARAM:
+#         for num_stop_points in N_STOP_POINTS:
+#             # num_stop_points = 2 * n_deliveries
+#             instances = []
+#             num_nodes = 5
+#             target_distance = 250.0
+#             tolerance = 50
+#             min_dist_between_stop_points = 5
+#             profit_distribution = zipf(theta)
+#             weights_range = (1, 5)
+#             profit_range = (5, 5)
+#             coordinates = generate_random_coordinates(num_nodes)
+#             graph = create_complete_graph_with_weights(coordinates)
+#             node_names = list(coordinates.keys())
+#             random_order, edges_in_path, total_distance = generate_random_cycle(
+#                 graph, node_names, target_distance, tolerance)
+#
+#             # Step 4: Define stop points along the path
+#             stop_point_coords = define_stop_points(
+#                 edges_in_path, coordinates, graph, min_dist_between_stop_points, num_stop_points)
+#
+#             # Step 5: Define deliveries with constraints
+#             edges_in_path_lines = [
+#                 LineString([coordinates[edge[0]], coordinates[edge[1]]]) for edge in edges_in_path]
+#             stop_coordinates = {}
+#             for index, s in enumerate(stop_point_coords):
+#                 # Generate the key using the ASCII value of 'A' + index
+#                 key = f"s{index + 1}"
+#                 # Convert the array to a tuple
+#                 # coordinates = tuple(array)
+#                 # Add the key and coordinates to the dictionary
+#                 stop_coordinates[key] = s
+#
+#             for n_deliveries in N_DELIVERIES:
+#                 for i in range(iterations):
+#                     deliveries = define_deliveries(
+#                         edges_in_path_lines,
+#                         n_deliveries,
+#                         min_edge_distance=0.5,
+#                         max_edge_distance=100,
+#                         min_delivery_distance=0 ,
+#                         profit_distribution=profit_distribution,
+#                         weights_range=weights_range,
+#                         profit_range=profit_range
+#                     )
+#
+#                     # Step 6: Output the minimum closest distance between deliveries and edges
+#                     delivery_points = [Point(
+#                         delivery['coordinates']) for delivery in deliveries]
+#                     closest_distances = [min([line.distance(delivery_point) for line in edges_in_path_lines]) for
+#                                          delivery_point in delivery_points]
+#                     min_closest_distance = min(
+#                         closest_distances) if closest_distances else None
+#
+#                     deliveries_2 = {}
+#                     for index, delivery in enumerate(deliveries):
+#                         # Create a new key for each delivery (D1, D2, D3, etc.)
+#                         key = f"p{index + 1}"
+#
+#                         # Map the original profit to reward, and keep the other properties
+#                         deliveries_2[key] = {
+#                             0: delivery["profit"],  # Example reward mapping
+#                             1: delivery["weight"],  # Example weight adjustment
+#                             2: tuple(delivery["coordinates"]),  # Convert to tuple
+#                         }
+#
+#                     # Step 7: Save data to file
+#                     instances.append([stop_coordinates, deliveries_2])
+#                     # data_to_save = {
+#                     #     "coordinates": coordinates,
+#                     #     "graph_edges": [(edge[0], edge[1], graph[edge[0]][edge[1]]['weight']) for edge in graph.edges],
+#                     #     "edges_in_path": edges_in_path,
+#                     #     "stop_points": stop_point_coords,
+#                     #     "deliveries": deliveries
+#                     # }
+#                     # print("Hello")
+#                     name = "problems-2/problem_n" + str(n_deliveries) + "_t" + str(theta) + "_s" + str(
+#                         num_stop_points) + ".dat"
+#
+#                     save_data_to_file(instances, name)
+#
+#                     print("Truck's Path:", " -> ".join(random_order))
+#                     print("Coordinates of Nodes:")
+#                     for node, coord in coordinates.items():
+#                         print(f"{node}: {coord}")
+#
+#                     print("Deliveries (Profit, Weight, Coordinates):")
+#                     for delivery in deliveries:
+#                         print(
+#                             f"{delivery['id']} - Profit: {delivery['profit']}, Weight: {delivery['weight']}, Coordinates: {delivery['coordinates']}")
+#
+#                     print("Minimum distance between any delivery and any edge:", min_closest_distance)
+
+
+# import pickle
+# from shapely.geometry import Point, LineString
+#
+def load_data_from_file(filepath):
+    with open(filepath, 'rb') as file:
+        return pickle.load(file)
+
+
+#
+# def save_data_to_file(data, filepath):
+#     with open(filepath, 'wb') as file:
+#         pickle.dump(data, file)
+
+# def generate_problem_instance():
+#     global N_DELIVERIES, ZIPF_PARAM, N_STOP_POINTS, iterations
+#
+#     for theta in ZIPF_PARAM:
+#         for num_stop_points in N_STOP_POINTS:
+#             instances = []
+#             num_nodes = 5
+#             target_distance = 250.0
+#             tolerance = 50
+#             min_dist_between_stop_points = 5
+#             profit_distribution = zipf(theta)
+#             weights_range = (1, 5)
+#             profit_range = (5, 5)
+#             coordinates = generate_random_coordinates(num_nodes)
+#             graph = create_complete_graph_with_weights(coordinates)
+#             node_names = list(coordinates.keys())
+#             random_order, edges_in_path, total_distance = generate_random_cycle(
+#                 graph, node_names, target_distance, tolerance)
+#
+#             # Step 4: Define stop points along the path
+#             stop_point_coords = define_stop_points(
+#                 edges_in_path, coordinates, graph, min_dist_between_stop_points, num_stop_points)
+#
+#             # Step 5: Define deliveries with constraints
+#             edges_in_path_lines = [
+#                 LineString([coordinates[edge[0]], coordinates[edge[1]]]) for edge in edges_in_path]
+#             stop_coordinates = {}
+#             for index, s in enumerate(stop_point_coords):
+#                 key = f"s{index + 1}"
+#                 stop_coordinates[key] = s
+#
+#             for n_deliveries in N_DELIVERIES:
+#                 previous_n_deliveries = max([d for d in N_DELIVERIES if d < n_deliveries], default=0)
+#                 print("prev_n_deliveries", previous_n_deliveries)
+#                 if previous_n_deliveries > 0:
+#                     prev_name = f"problems-2/problem_n{previous_n_deliveries}_t{theta}_s{num_stop_points}.dat"
+#                     # load_name = "problems-2/problem_n" + str(n_deliveries) + "_t" + str(theta) + "_s" + str(
+#                     #     num_stop_points) + ".dat"
+#                     instances = []
+#                     if os.path.exists(prev_name):
+#                         with open(prev_name, 'rb') as f:
+#                             while True:
+#                                 try:
+#                                     loaded_item = pickle.load(f)
+#                                     instances.append(loaded_item)
+#                                 except EOFError:
+#                                     break
+#                 for i in range(iterations):
+#                      # previous_deliveries  = {}
+#
+#                      if previous_n_deliveries > 0:
+#                         print("inst u",instances[i])
+#                             # previous_deliveries = instances[i][0][1]
+#                             # print("prev",previous_deliveries)
+#                             # existing_deliveries = list(previous_deliveries.values())
+#                     else:
+#                         previous_deliveries = {}
+#
+#
+#                     additional_deliveries_count = n_deliveries - len(previous_deliveries)
+#                     additional_deliveries = define_deliveries(
+#                         edges_in_path_lines,
+#                         additional_deliveries_count,
+#                         min_edge_distance=0.5,
+#                         max_edge_distance=100,
+#                         min_delivery_distance=0,
+#                         profit_distribution=profit_distribution,
+#                         weights_range=weights_range,
+#                         profit_range=profit_range
+#                     )
+#
+#                     delivery_points = [Point(delivery['coordinates']) for delivery in additional_deliveries]
+#                     closest_distances = [
+#                         min([line.distance(delivery_point) for line in edges_in_path_lines]) for delivery_point in
+#                         delivery_points
+#                     ]
+#                     min_closest_distance = min(closest_distances) if closest_distances else None
+#
+#                     # print(all_deliveries)
+#                     deliveries_2 = {}
+#                     for index, delivery in enumerate(additional_deliveries):
+#                         key = f"p{index + 1 + len(previous_deliveries)}"
+#                         deliveries_2[key] = {
+#                             0: delivery["profit"],
+#                             1: delivery["weight"],
+#                             2: tuple(delivery["coordinates"]),
+#                         }
+#                     # print("prev", previous_deliveries)
+#                     # print("additional", deliveries_2)
+#                     all_deliveries = {}
+#                     # c4 = {}
+#                     # print("existing",existing_deliveries)
+#
+#                     for key, value in previous_deliveries.items():
+#                         all_deliveries[key] = value
+#                     for key, value in deliveries_2.items():
+#                         all_deliveries[key] = value
+#                     # print("Method 4:", c4)
+#                     # sdsdlslsleries = existing_deliveries + deliveries_2
+#                     instances.append([stop_coordinates, all_deliveries])
+#
+#                     name = f"problems-2/problem_n{n_deliveries}_t{theta}_s{num_stop_points}.dat"
+#                     save_data_to_file(instances, name)
+#
+#                     # print("Truck's Path:", " -> ".join(random_order))
+#                     # print("Coordinates of Nodes:")
+#                     # for node, coord in coordinates.items():
+#                     #     print(f"{node}: {coord}")
+#                     #
+#                     # print("Deliveries (Profit, Weight, Coordinates):")
+#                     # for delivery in all_deliveries.values():
+#                     #     print(f"Profit: {delivery[0]}, Weight: {delivery[1]}, Coordinates: {delivery[2]}")
+#                     #
+#                     # print("Minimum distance between any delivery and any edge:", min_closest_distance)
 def generate_problem_instance():
-    global N_DELIVERIES, ZIPF_PARAM, N_STOP_POINTS
-    for n_deliveries in N_DELIVERIES:
-        for theta in ZIPF_PARAM:
-            for num_stop_points in N_STOP_POINTS:
+    global N_DELIVERIES, ZIPF_PARAM, N_STOP_POINTS, iterations
+
+    for theta in ZIPF_PARAM:
+        for num_stop_points in N_STOP_POINTS:
+            num_nodes = 5
+            target_distance = 250.0
+            tolerance = 50
+            min_dist_between_stop_points = 5
+            profit_distribution = zipf(theta)
+            weights_range = (1, 5)
+            profit_range = (5, 10)
+            coordinates = generate_random_coordinates(num_nodes)
+            graph = create_complete_graph_with_weights(coordinates)
+            node_names = list(coordinates.keys())
+            random_order, edges_in_path, total_distance = generate_random_cycle(graph, node_names, target_distance, tolerance)
+
+            # Step 4: Define stop points along the path
+            stop_point_coords = define_stop_points(edges_in_path, coordinates, graph, min_dist_between_stop_points, num_stop_points)
+
+            # Step 5: Define deliveries with constraints
+            edges_in_path_lines = [LineString([coordinates[edge[0]], coordinates[edge[1]]]) for edge in edges_in_path]
+            stop_coordinates = {}
+            for index, s in enumerate(stop_point_coords):
+                key = f"s{index + 1}"
+                stop_coordinates[key] = s
+
+            for n_deliveries in N_DELIVERIES:
+                previous_n_deliveries = max([d for d in N_DELIVERIES if d < n_deliveries], default=0)
+                print("prev_n_deliveries", previous_n_deliveries)
+                prev_instances = []
+                if previous_n_deliveries > 0:
+                    prev_name = f"problems-2/problem_n{previous_n_deliveries}_t{theta}_s{num_stop_points}.dat"
+                    if os.path.exists(prev_name):
+                        with open(prev_name, 'rb') as f:
+                            loaded_instances = []
+                            while True:
+                                try:
+                                    loaded_item = pickle.load(f)
+                                    loaded_instances.append(loaded_item)
+                                except EOFError:
+                                    break
+                            # print(loaded_instances)
+                            prev_instances.extend(loaded_instances)  # Use extend to add all loaded items
+
+                # print("instances", prev_instances)
+                # print("iter starts",iterations)
                 for i in range(iterations):
                     instances = []
-                    num_nodes = 5
-                    target_distance = 250.0
-                    tolerance = 50
-                    min_dist_between_stop_points = 3
-                    profit_distribution = zipf(theta)
-                    weights_range = (1, 5)
-                    profit_range = (5,10)
-
-                    # Step 1: Generate coordinates for nodes
-                    coordinates = generate_random_coordinates(num_nodes)
-                    # print("Here2 ",coordinates)
-
-                    # Step 2: Create a complete graph with weights
-                    graph = create_complete_graph_with_weights(coordinates)
-
-                    # Step 3: Generate a random directed cycle
-                    node_names = list(coordinates.keys())
-                    random_order, edges_in_path, total_distance = generate_random_cycle(graph, node_names,
-                                                                                        target_distance,
-                                                                                        tolerance)
-
-                    # Step 4: Define stop points along the path
-                    stop_point_coords = define_stop_points(edges_in_path, coordinates, graph,
-                                                           min_dist_between_stop_points,
-                                                           num_stop_points)
-
-                    # Step 5: Define deliveries with constraints
-                    edges_in_path_lines = [LineString([coordinates[edge[0]], coordinates[edge[1]]]) for edge in
-                                           edges_in_path]
-
-                    deliveries = define_deliveries(
+                    previous_deliveries = {}
+                    if previous_n_deliveries > 0:
+                        # print("inst u", prev_instances[i])
+                        previous_deliveries = prev_instances[i][0][1]
+                    # print("ptev",previous_deliveries)
+                    additional_deliveries_count = n_deliveries - len(previous_deliveries)
+                    # print("ADDITION DEL COUNT",additional_deliveries_count)
+                    additional_deliveries = define_deliveries(
                         edges_in_path_lines,
-                        n_deliveries,
+                        additional_deliveries_count,
                         min_edge_distance=0.5,
                         max_edge_distance=100,
-                        min_delivery_distance=1,
+                        min_delivery_distance=0,
                         profit_distribution=profit_distribution,
                         weights_range=weights_range,
-                        profit_range = profit_range
+                        profit_range=profit_range
                     )
-
-                    # # Step 6: Output the minimum closest distance between deliveries and edges
-                    delivery_points = [Point(delivery['coordinates']) for delivery in deliveries]
-                    closest_distances = [min([line.distance(delivery_point) for line in edges_in_path_lines]) for
-                                         delivery_point
-                                         in delivery_points]
+                    # print("add,",additional_deliveries)
+                    delivery_points = [Point(delivery['coordinates']) for delivery in additional_deliveries]
+                    closest_distances = [
+                        min([line.distance(delivery_point) for line in edges_in_path_lines]) for delivery_point in delivery_points
+                    ]
                     min_closest_distance = min(closest_distances) if closest_distances else None
 
                     deliveries_2 = {}
-                    for index, delivery in enumerate(deliveries):
-                        # Create a new key for each delivery (D1, D2, D3, etc.)
-                        key = f"p{index + 1}"
-
-                        # Map the original profit to reward, and keep the other properties
+                    for index, delivery in enumerate(additional_deliveries):
+                        key = f"p{index + 1 + len(previous_deliveries)}"
                         deliveries_2[key] = {
-                            0: delivery["profit"],  # Example reward mapping
-                            1: delivery["weight"],  # Example weight adjustment
-                            2: tuple(delivery["coordinates"]),  # Convert to tuple
+                            0: delivery["profit"],
+                            1: delivery["weight"],
+                            2: tuple(delivery["coordinates"]),
                         }
 
-                    stop_coordinates = {}
-                    for index, s in enumerate(stop_point_coords):
-                        # Generate the key using the ASCII value of 'A' + index
-                        key = f"s{index + 1}"
-                        # Convert the array to a tuple
-                        # coordinates = tuple(array)
-                        # Add the key and coordinates to the dictionary
-                        stop_coordinates[key] = s
+                    all_deliveries = {}
+                    for key, value in previous_deliveries.items():
+                        all_deliveries[key] = value
+                    for key, value in deliveries_2.items():
+                        all_deliveries[key] = value
+                    # print("all deliveries", all_deliveries)
+                    instances.append([stop_coordinates, all_deliveries])
 
-                    # Step 7: Save data to file
-                    instances.append([stop_coordinates, deliveries_2])
-                    # data_to_save = {
-                    #     "coordinates": coordinates,
-                    #     "graph_edges": [(edge[0], edge[1], graph[edge[0]][edge[1]]['weight']) for edge in graph.edges],
-                    #     "edges_in_path": edges_in_path,
-                    #     "stop_points": stop_point_coords,
-                    #     "deliveries": deliveries
-                    # }
-                    # print("Hello")
-                    name = "problems/problem_n" + str(n_deliveries) + "_t" + str(theta) + "_s" + str(
-                        num_stop_points) + ".dat"
-
+                    name = f"problems-2/problem_n{n_deliveries}_t{theta}_s{num_stop_points}.dat"
                     save_data_to_file(instances, name)
 
-                    print("Truck's Path:", " -> ".join(random_order))
-                    print("Coordinates of Nodes:")
-                    for node, coord in coordinates.items():
-                        print(f"{node}: {coord}")
-
-                    print("Deliveries (Profit, Weight, Coordinates):")
-                    for delivery in deliveries:
-                        print(
-                            f"{delivery['id']} - Profit: {delivery['profit']}, Weight: {delivery['weight']}, Coordinates: {delivery['coordinates']}")
-
-                    print("Minimum distance between any delivery and any edge:", min_closest_distance)
+                    # Uncomment below lines for debug prints
+                    # print("Truck's Path:", " -> ".join(random_order))
+                    # print("Coordinates of Nodes:")
+                    # for node, coord in coordinates.items():
+                    #     print(f"{node}: {coord}")
+                    #
+                    # print("Deliveries (Profit, Weight, Coordinates):")
+                    # for delivery in all_deliveries.values():
+                    #     print(f"Profit: {delivery[0]}, Weight: {delivery[1]}, Coordinates: {delivery[2]}")
+                    #
+                    # print("Minimum distance between any delivery and any edge:", min_closest_distance)
