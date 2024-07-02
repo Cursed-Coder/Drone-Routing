@@ -14,7 +14,7 @@ N_DELIVERIES = [5, 10, 15, 20, 40, 60, 80, 100]
 # N_DELIVERIES = [ 100 ]
 N_STOP_POINTS = [30]
 ZIPF_PARAM = [2]
-N_DRONES = [1]
+N_DRONES = [7]
 E = 44.54
 delta = -133.33
 
@@ -103,30 +103,17 @@ def algo_tests():
                         else:
                             output_ILP = None
                         print("***************optimal ends****************")
-                        # uav_s = copy.deepcopy(uavs)
 
-                        # print("***************optimal starts****************")
-                        # output_ILP_2 = ILP.opt_algo_cplex_2(prob[0][0], prob[0][1], uav_s, E, delta, K, debug)
-                        # print("***************optimal ends****************")
-
-                        # results = [{
-                        #     "Instance": prob,
-                        #     "N_Deliveries": n_deliveries,
-                        #     "Algorithm_1_Reward": output_1,
-                        #     "Algorithm_2_Reward": output_2,
-                        #     "Algorithm_3_Reward": output_3,
-                        #     "ILP_Reward": output_ILP
-                        # }]
-
-                        print(
-                            "&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&7")
-                        print("output1", output_1)
-                        print("output2", output_2)
-                        print("output3", output_3)
-                        print("outputILP", output_ILP)
-                        # print("outputILP_2", output_ILP_2)
-                        print(
-                            "&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&7")
+                        #
+                        # print(
+                        #     "&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&7")
+                        # print("output1", output_1)
+                        # print("output2", output_2)
+                        # print("output3", output_3)
+                        # print("outputILP", output_ILP)
+                        # # print("outputILP_2", output_ILP_2)
+                        # print(
+                        #     "&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&7")
 
                         # results = [{
                         #     "Instance": prob,
@@ -145,47 +132,6 @@ def algo_tests():
                     # df_results = pd.DataFrame(results)
                     results.to_csv(save_name)
                     print(f"Results saved to {save_name}")
-
-
-# def load_results(N_DELIVERIES, num_stop_points, num_drones):
-#     rewards = {
-#         "N_Deliveries": [],
-#         "Algorithm_1_Reward": [],
-#         "Algorithm_2_Reward": [],
-#         "Algorithm_3_Reward": [],
-#         "ILP_Reward": []
-#     }
-#     compact_csv = pd.DataFrame(
-#         columns=["x", "DRA-1_mean", "DRA-1_std", "DRA-2_mean", "DRA-2_std", "DRA-3_mean",
-#                  "DRA-3_std", "ILP_mean", "ILP_std"])
-#     for n_deliveries in N_DELIVERIES:
-#         file_name = f"results-3/result_d{num_drones}_n{n_deliveries}_s{num_stop_points}.csv"
-#         if os.path.exists(file_name):
-#             df = pd.read_csv(file_name)
-#             DRA_1_mean = df["DRA-1_profit"].mean()
-#             DRA_2_mean = df["DRA-2_profit"].mean()
-#             DRA_3_mean = df["DRA-3_profit"].mean()
-#             DRA_1_std = df["DRA-1_profit"].std()
-#             DRA_2_std = df["DRA-2_profit"].std()
-#             DRA_3_std = df["DRA-3_profit"].std()
-#             ilp_rewards = df["ILP_profit"].dropna()
-#             if not ilp_rewards.empty():
-#                 ILP_mean = ilp_rewards.mean()
-#                 ILP_std = ilp_rewards.std()
-#             else:
-#                 ILP_mean = None
-#                 ILP_std = None
-#             # print("DRA_1_mean", DRA_1_mean)
-#             # print("DRA_2_mean", DRA_2_mean)
-#             # print("DRA_3_mean", DRA_3_mean)
-#             # print("DRA_1_std", DRA_1_std)
-#             # print("DRA_2_std", DRA_2_std)
-#             # print("DRA_3_std", DRA_3_std)
-#             # to_append = [n_deliveries, DRA_1_mean, DRA_1_std, DRA_2_mean, DRA_2_std, DRA_3_mean, DRA_3_std, ILP_mean, ILP_std]
-#             # compact_csv.loc[len(compact_csv)] = to_append
-#
-#     # print(compact_csv)
-#     # return compact_csv
 
 
 def load_results(N_DELIVERIES, num_stop_points, num_drones):
@@ -227,68 +173,23 @@ def load_results(N_DELIVERIES, num_stop_points, num_drones):
     return compact_csv
 
 
-# Example call to the function
-# compact_csv = load_results(N_DELIVERIES=[10, 20, 30], num_stop_points=5, num_drones=2)
-# print(compact_csv)
-
-def plot_means(compact_csv):
-    plt.figure(figsize=(6, 6))
-    plt.plot(compact_csv['x'], compact_csv['DRA-1_mean'], label='DRA-1 Mean', marker='o')
-    plt.plot(compact_csv['x'], compact_csv['DRA-2_mean'], label='DRA-2 Mean', marker='o')
-    plt.plot(compact_csv['x'], compact_csv['DRA-3_mean'], label='DRA-3 Mean', marker='o')
-    if compact_csv['ILP_mean'].notnull().any():
-        plt.plot(compact_csv['x'], compact_csv['ILP_mean'], label='ILP Mean', marker='o', color='black')
-    plt.xlabel('Number of Deliveries')
-    plt.ylabel('Mean Reward')
-    # plt.title('Mean Rewards of Algorithms')
-    # plt.legend()
-    plt.grid(True)
-    plt.show()
-
-
-# def plot_means_and_stds(compact_csv):
-#     plt.figure(figsize=(6, 6))
-#
-#     # Plot DRA-1 mean and std
-#     plt.plot(compact_csv['x'], compact_csv['DRA-1_mean'], label='DRA-1 Mean', marker='o')
-#     plt.fill_between(compact_csv['x'], compact_csv['DRA-1_mean'] - compact_csv['DRA-1_std'],
-#                      compact_csv['DRA-1_mean'] + compact_csv['DRA-1_std'], alpha=0.2)
-#
-#     # Plot DRA-2 mean and std
-#     plt.plot(compact_csv['x'], compact_csv['DRA-2_mean'], label='DRA-2 Mean', marker='o')
-#     plt.fill_between(compact_csv['x'], compact_csv['DRA-2_mean'] - compact_csv['DRA-2_std'],
-#                      compact_csv['DRA-2_mean'] + compact_csv['DRA-2_std'], alpha=0.2)
-#
-#     # Plot DRA-3 mean and std
-#     plt.plot(compact_csv['x'], compact_csv['DRA-3_mean'], label='DRA-3 Mean', marker='o')
-#     plt.fill_between(compact_csv['x'], compact_csv['DRA-3_mean'] - compact_csv['DRA-3_std'],
-#                      compact_csv['DRA-3_mean'] + compact_csv['DRA-3_std'], alpha=0.2)
-#
-#     # Plot ILP mean and std if ILP data is available
-#     if compact_csv['ILP_mean'].notnull().any():
-#         plt.plot(compact_csv['x'], compact_csv['ILP_mean'], label='ILP Mean', marker='o', color='black')
-#         plt.fill_between(compact_csv['x'], compact_csv['ILP_mean'] - compact_csv['ILP_std'],
-#                          compact_csv['ILP_mean'] + compact_csv['ILP_std'], alpha=0.2, color='black')
-#
-#     plt.xlabel('Number of Deliveries')
-#     plt.ylabel('Reward')
-#     plt.title('Mean Rewards and Standard Deviations of Algorithms')
-#     plt.legend()
-#     plt.grid(True)
-#     plt.show()
-
-# Example call to the function
-# Assuming compact_csv is already created using load_results function
-# compact_csv = load_results(N_DELIVERIES=[10, 20, 30], num_stop_points=5, num_drones=2)
-# plot_means_and_stds(compact_csv)
-line_len = 0.8
-
-
 def plot_means_and_stds(compact_csv):
-    plt.figure(figsize=(6, 6))
+    line_len = 0.8  # Length of the horizontal line for std deviation caps
+    marker_size = 20  # Marker size
+
+    plt.figure(figsize=(10, 10))
+
+    # Markers for different algorithms
+    markers = {
+        'DRA-1': 'o',
+        'DRA-2': 's',
+        'DRA-3': 'D',
+        'ILP': 'x'
+    }
 
     # Plot DRA-1 mean and vertical lines for std
-    plt.plot(compact_csv['x'], compact_csv['DRA-1_mean'], label='DRA-1 Mean', marker='o')
+    plt.plot(compact_csv['x'], compact_csv['DRA-1_mean'], label='DRA-1 Mean', marker=markers['DRA-1'],
+             markersize=marker_size)
     for i, x in enumerate(compact_csv['x']):
         mean = compact_csv['DRA-1_mean'][i]
         std = compact_csv['DRA-1_std'][i]
@@ -297,7 +198,8 @@ def plot_means_and_stds(compact_csv):
         plt.hlines(mean + std, x - line_len, x + line_len, color='blue')
 
     # Plot DRA-2 mean and vertical lines for std
-    plt.plot(compact_csv['x'], compact_csv['DRA-2_mean'], label='DRA-2 Mean', marker='o')
+    plt.plot(compact_csv['x'], compact_csv['DRA-2_mean'], label='DRA-2 Mean', marker=markers['DRA-2'],
+             markersize=marker_size)
     for i, x in enumerate(compact_csv['x']):
         mean = compact_csv['DRA-2_mean'][i]
         std = compact_csv['DRA-2_std'][i]
@@ -306,7 +208,8 @@ def plot_means_and_stds(compact_csv):
         plt.hlines(mean + std, x - line_len, x + line_len, color='orange')
 
     # Plot DRA-3 mean and vertical lines for std
-    plt.plot(compact_csv['x'], compact_csv['DRA-3_mean'], label='DRA-3 Mean', marker='o')
+    plt.plot(compact_csv['x'], compact_csv['DRA-3_mean'], label='DRA-3 Mean', marker=markers['DRA-3'],
+             markersize=marker_size)
     for i, x in enumerate(compact_csv['x']):
         mean = compact_csv['DRA-3_mean'][i]
         std = compact_csv['DRA-3_std'][i]
@@ -316,7 +219,8 @@ def plot_means_and_stds(compact_csv):
 
     # Plot ILP mean and vertical lines for std if ILP data is available
     if compact_csv['ILP_mean'].notnull().any():
-        plt.plot(compact_csv['x'], compact_csv['ILP_mean'], label='ILP Mean', marker='o', color='black')
+        plt.plot(compact_csv['x'], compact_csv['ILP_mean'], label='ILP Mean', marker=markers['ILP'], color='black',
+                 markersize=marker_size)
         for i, x in enumerate(compact_csv['x']):
             if pd.notna(compact_csv['ILP_mean'][i]) and pd.notna(compact_csv['ILP_std'][i]):
                 mean = compact_csv['ILP_mean'][i]
@@ -325,29 +229,18 @@ def plot_means_and_stds(compact_csv):
                 plt.hlines(mean - std, x - line_len, x + line_len, color='black')
                 plt.hlines(mean + std, x - line_len, x + line_len, color='black')
 
-    plt.xlabel('Number of Deliveries')
-    plt.ylabel('Reward')
-    # plt.title('Mean Rewards and Standard Deviations of Algorithms')
-    # plt.legend()
+    plt.xlabel('Number of Deliveries', fontsize=35)
+    plt.ylabel('Reward', fontsize=35)
+    plt.title('Mean Rewards and Standard Deviations of Algorithms', fontsize=16)
+
+    plt.legend(fontsize=22)
     plt.grid(True)
+
+    plt.tick_params(axis='both', which='major', labelsize=35)
+    plt.tick_params(axis='both', which='minor', labelsize=35)
+
     plt.show()
 
-
-# Example call to the function
-# Assuming compact_csv is already created using load_results function
-# compact_csv = load_results(N_DELIVERIES=[10, 20, 30], num_stop_points=5, num_drones=2)
-# plot_means_and_stds(compact
-
-# Example call to the function
-# Assuming compact_csv is already created using load_results function
-# compact_csv = load_results(N_DELIVERIES=[10, 20, 30], num_stop_points=5, num_drones=2)
-# plot_means_and_stds(compact_csv)
-
-
-# Example call to the function
-# Assuming compact_csv is already created using load_results function
-# compact_csv = load_results(N_DELIVERIES=[10, 20, 30], num_stop_points=5, num_drones=2)
-# plot_means_and_stds(compact_csv)
 
 # algo_tests()
 compact_csv = load_results(N_DELIVERIES, N_STOP_POINTS[0], N_DRONES[0])
